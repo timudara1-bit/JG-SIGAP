@@ -1,0 +1,128 @@
+<script>
+
+  function loadPage(page) {    
+
+    google.script.run
+      .withSuccessHandler(function(html){
+
+        document.getElementById(
+          "content"
+        ).innerHTML = html;
+
+        if (page === "dashboard") {          
+
+          // loadSLADashboard();     // SLA engine baru
+          initDashboard();        // partial HTML load
+          loadDashboard();        // existing KPI          
+
+        }
+
+      })
+    .getPage(page);
+
+  }
+
+  window.addEventListener("click", function(e){
+
+    const menu =
+      document.querySelector(".profile-menu");
+
+    if(!menu.contains(e.target)){
+
+      document
+        .getElementById("profileDropdown")
+        .classList
+        .remove("show");
+
+    }
+
+  });
+
+
+  
+  function logout() {
+
+    google.script.run
+      .withSuccessHandler(function() {
+
+        window.location.reload();
+
+      })
+      .logoutUser();
+
+  }
+
+  function logout() {
+
+  console.log("Logout clicked");
+
+  google.script.run
+    .withSuccessHandler(function() {
+
+      console.log("Logout success");
+
+      window.location.reload();
+
+    })
+    .withFailureHandler(function(err){
+
+      console.error(err);
+
+      alert(err.message);
+
+    })
+    .logoutUser();
+
+}
+
+function loadLoaderMenu(){
+
+  google.script.run
+    .withSuccessHandler(renderLoaderMenu)
+    .getAccessibleLoaders();
+
+}
+
+function renderLoaderMenu(loaders){
+
+  const menu =
+    document.getElementById("loaderMenu");
+
+  if(!menu) return;
+
+  let html = "";
+
+  loaders.forEach(loader => {
+
+    const loaderCode = loader[0];
+    const loaderName = loader[1];
+    const moduleCode = loader[2];
+
+    html += `
+      <li>
+        <a href="#"
+           onclick="openLoader('${moduleCode}')">
+
+          📤 ${loaderName}
+
+        </a>
+      </li>
+    `;
+
+  });
+
+  menu.innerHTML = html;
+
+}
+
+document.addEventListener(
+  "DOMContentLoaded",
+  function(){
+
+    loadLoaderMenu();
+
+  }
+);
+
+
+</script>

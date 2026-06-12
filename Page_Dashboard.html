@@ -1,0 +1,391 @@
+<!-- <div class="container">
+
+  <div class="dashboard_card">
+
+    <h3>Total Pengajuan</h3>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="fpbHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="fpbMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="fpbBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="fpbTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="fpbTotal">0</span>
+    </div>
+
+  </div>
+
+  <div class="dashboard_card">
+
+    <h3>Verifikasi GA</h3>
+
+        <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verivikasiGaHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verivikasiGaMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verivikasiGaBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verivikasiGaTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verivikasiGaTotal">0</span>
+    </div>
+
+  </div>
+
+  <div class="dashboard_card">
+
+    <h3>Verifikasi FA & SMO</h3>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verifikasiFaSmoHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verifikasiFaSmoMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verifikasiFaSmoBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verifikasiFaSmoTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="verifikasiFaSmoTotal">0</span>
+    </div>
+
+  </div>
+
+  <div class="dashboard_card">
+
+    <h3>Verifikasi IA</h3>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="vevrifikasiIaHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="vevrifikasiIaMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="vevrifikasiIaBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="vevrifikasiIaTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="vevrifikasiIaTotal">0</span>
+    </div>
+
+  </div>
+
+  <div class="dashboard_card">
+
+    <h3>PP Approve</h3>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="ppApproveHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="ppApproveMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="ppApproveBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="ppApproveTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="ppApproveTotal">0</span>
+    </div>
+
+  </div>
+
+  <div class="dashboard_card">
+
+    <h3>Create PR</h3>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="createPrHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="createPrMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="createPrBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="createPrTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="createPrTotal">0</span>
+    </div>
+
+  </div>
+
+  <div class="dashboard_card">
+
+    <h3>Receive</h3>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="receiveHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="receiveMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="receiveBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="receiveTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="receiveTotal">0</span>
+    </div>
+
+  </div>
+
+  <div class="dashboard_card">
+
+    <h3>Invoice</h3>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="invoiceHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="invoiceMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="invoiceBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="invoiceTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="invoiceTotal">0</span>
+    </div>
+
+  </div>
+  <div class="dashboard_card">
+
+    <h3>Pembayaran</h3>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('hari')">
+      <span class="label">Hari ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="pembayaranHari">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('minggu')">
+      <span class="label">Minggu ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="pembayaranMinggu">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('bulan')">
+      <span class="label">Bulan ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="pembayaranBulan">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('tahun')">
+      <span class="label">Tahun ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="pembayaranTahun">0</span>
+    </div>
+
+    <div class="dashboard_item clickable"
+        onclick="showDetail('semua')">
+      <span class="label">Selama ini</span>
+      <span class="separator">:</span>
+      <span class="value" id="pembayaranTotal">0</span>
+    </div>
+
+  </div>
+
+</div> -->
+
+<div class="container">
+
+  <div id="dashboardTotal"></div>
+
+  <div id="dashboardStatus"></div>
+
+  <div id="dashboardLeadTime"></div>
+
+  
+
+</div>
+
+<script>
+
+document.addEventListener("DOMContentLoaded", () => {
+  initDashboard();
+});
+
+</script>

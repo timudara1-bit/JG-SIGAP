@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <base target="_top">
+
+  <?!= include('CSS_app.css'); ?>
+
+</head>
+
+<body>
+
+<div class="login-box">
+  <img src="https://drive.google.com/thumbnail?id=1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6" alt="Logo Perusahaan" class="logo">
+
+  <h2>SIGAP</h2>
+  <p class="subtitle">
+    Sistem Informasi General Affair - Pengajuan
+  </p>
+
+  <input
+    type="email"
+    id="email"
+    placeholder="Email">
+
+  <input
+    type="password"
+    id="password"
+    placeholder="Password">
+
+  <button onclick="login()">
+    Login
+  </button>
+
+</div>
+
+<?!= include('JS_login.js'); ?>
+
+</body>
+
+</html>

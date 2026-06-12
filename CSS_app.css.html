@@ -1,0 +1,428 @@
+<style>
+
+body{
+  font-family:Arial;
+  margin:0;
+  background:#f5f5f5;
+}
+
+/* Layout Utama */
+.main-layout{
+  display:flex;
+  min-height:calc(100vh - 60px);
+}
+
+/* Area Content */
+#content{
+
+  position:fixed;
+
+  top:40px;       /* navbar */
+  left:220px;     /* sidebar */
+
+  right:0;
+
+  bottom:50px;    /* footer */
+
+  padding:20px;
+
+  overflow-y:auto;
+
+  background:#f5f7fa;
+
+  box-sizing:border-box;
+
+}
+
+
+// Navbar
+.navbar{
+  position:fixed;
+
+  top:0;
+  left:0;
+  right:0;
+
+  height:60px;
+
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+
+  padding:0 20px;
+
+  background:#111827;
+
+  color:#fff;
+
+  border-bottom:1px solid #374151;
+
+  z-index:1000;
+}
+
+.navbar h2{
+  color:white;
+  margin:0;
+}
+
+.user-name{
+  color:#d1d5db;
+}
+
+.navbar-user{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:10px;
+
+  min-width:50px; /* perlebar area user */
+}
+
+.user-photo{
+  width:36px;
+  height:36px;
+  border-radius:50%;
+}
+
+.user-name{
+  flex:1;              /* nama mengambil ruang yang tersedia */
+  text-align:left;
+  font-size:13px;
+  font-weight:500;
+  color:#555;
+  /* white-space:nowrap; */
+  /* overflow:hidden; */
+  text-overflow:ellipsis;
+}
+
+.btn-logout{
+  background:#dc3545;
+  color:#fff;
+  border:none;
+  border-radius:4px;
+
+  padding:3px 8px;     /* lebih sempit */
+  min-width:auto;      /* jangan pakai lebar tetap */
+
+  font-size:11px;
+  font-weight:600;
+  line-height:1.2;
+
+  cursor:pointer;
+}
+
+.btn-logout:hover{
+  background:#c82333;
+}
+
+.profile-menu{
+  position:relative;
+}
+
+.user-photo{
+  width:40px;
+  height:40px;
+  border-radius:50%;
+  cursor:pointer;
+  object-fit:cover;
+  border:2px solid #eee;
+}
+
+.user-photo:hover{
+  border-color:#1976d2;
+}
+
+.profile-dropdown{
+  display:none;
+
+  position:absolute;
+  right:0;
+  top:50px;
+
+  width:240px;
+
+  background:white;
+  border-radius:8px;
+
+  box-shadow:
+    0 4px 12px rgba(0,0,0,.15);
+
+  overflow:hidden;
+
+  z-index:9999;
+}
+
+.profile-dropdown.show{
+  display:block;
+}
+
+.profile-header{
+  padding:12px;
+  background:#f8f9fa;
+  border-bottom:1px solid #eee;
+}
+
+#userName{
+  font-size:14px;
+  font-weight:600;
+  color: #333;
+}
+
+#userEmail{
+  font-size:12px;
+  color: #333;
+  /* color:#666; */
+}
+
+.profile-dropdown a{
+  display:block;
+  padding:10px 12px;
+  text-decoration:none;
+  color:#333;
+}
+
+.profile-dropdown a:hover{
+  background:#f5f5f5;
+}
+
+.main-layout{
+  display:flex;
+  margin-top:60px;
+}
+
+.sidebar{
+
+  position:fixed;
+
+  top:60px;          /* tinggi navbar */
+  left:0;
+
+  width:240px;
+  min-width:240px;
+
+  height:calc(100vh - 60px);
+
+  background:#1f2937;
+
+  overflow-y:auto;
+
+  border-right:1px solid #374151;
+
+  z-index:999;
+}
+
+#content{
+  flex:1;
+
+  margin-left:5px;
+
+  padding:10px;
+
+  min-height:calc(100vh - 60px);
+}
+
+
+// Style Form Login
+.login-box{
+  width:350px;
+  margin:120px auto;
+  background:white;
+  padding:25px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.1);
+  text-align:center;
+}
+
+.logo{
+  width:100px;
+  height:auto;
+  display:block;
+  margin:0 auto 10px;
+  margin-bottom:10px;
+}
+
+.subtitle{
+  margin:0 0 20px 0;
+  color:#777;
+  font-size:9px;
+  line-height:1;
+}
+
+input{
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+  box-sizing:border-box;
+  border:1px solid #ccc;
+  border-radius:5px;
+}
+
+button{
+  width:100%;
+  padding:10px;
+  box-sizing:border-box;
+  background:#0d6efd;
+  color:white;
+  border:none;
+  border-radius:5px;
+  cursor:pointer;
+}
+
+// Style Register
+.register-box{
+  width:350px;
+  margin:50px auto;
+  background:#fff;
+  padding:25px;
+  border-radius:10px;
+  box-shadow:0 0 10px rgba(0,0,0,.1);
+  text-align:center;
+}
+
+.register-box input{
+  width:100%;
+  padding:10px;
+  margin-bottom:10px;
+  box-sizing:border-box;
+}
+
+.register-box button{
+  width:100%;
+  padding:10px;
+  cursor:pointer;
+}
+
+#message{
+  margin-top:10px;
+  font-size:12px;
+}
+
+/* sidebar */
+.sidebar{
+  width:240px;
+  min-width:240px;
+  height:calc(100vh - 60px);
+
+  background:#1f2937;
+
+  color:#fff;
+
+  position:fixed;
+  top:60px;
+
+  overflow-y:auto;
+
+  box-shadow:
+    2px 0 8px rgba(0,0,0,.1);
+}
+
+.sidebar ul{
+  list-style:none;
+  margin:0;
+  padding:15px 0;
+}
+
+.sidebar li{
+  margin:0;
+  padding:0;
+}
+
+.sidebar a span{
+  width:24px;
+  margin-right:12px;
+  text-align:center;
+}
+
+.sidebar a{
+  display:flex;
+  align-items:center;
+
+  padding:14px 20px;
+
+  color:#d1d5db;
+  text-decoration:none;
+
+  font-size:14px;
+  font-weight:500;
+
+  transition:all .2s ease;
+}
+
+.sidebar a:hover{
+  background:#374151;
+  color:#fff;
+}
+
+.sidebar a.active{
+  background:#2563eb;
+  color:#fff;
+
+  border-left:4px solid #60a5fa;
+}
+
+.sidebar a::before{
+  content:"•";
+  margin-right:12px;
+  font-size:16px;
+}
+
+.menu-group .arrow{
+  margin-left:auto;
+  font-size:12px;
+}
+
+.submenu{
+  display:none;
+  list-style:none;
+  padding:0;
+  margin:0;
+
+  background:#111827;
+}
+
+.submenu.show{
+  display:block;
+}
+
+.submenu li a{
+
+  padding:12px 20px 12px 55px;
+
+  font-size:13px;
+
+  color:#cbd5e1;
+
+  display:block;
+}
+
+.submenu li a:hover{
+  background:#374151;
+  color:white;
+}
+
+
+.footer{
+
+  position:fixed;
+
+  bottom:0;
+  left:240px;
+  right:0;
+
+  height:50px;
+
+  display:flex;
+  align-items:center;
+  justify-content:center;
+
+  background:#ffffff;
+
+  border-top:1px solid #e5e7eb;
+
+  z-index:1000;
+
+  font-size:12px;
+  color:#6b7280;
+}
+
+</style>

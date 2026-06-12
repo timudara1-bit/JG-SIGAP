@@ -1,0 +1,124 @@
+<div class="sidebar">
+
+  <ul>
+
+    <!-- Dashboard -->
+    <li>
+      <a href="#" onclick="loadPage('dashboard'); return false;">
+        <span>📊</span>
+        Dashboard
+      </a>
+    </li>
+
+    <!-- Master Data -->
+    <li class="menu-group">
+
+      <a href="#" onclick="toggleMenu('masterMenu'); return false;">
+        <span>⚙️</span>
+        Settings
+        <span class="arrow">▼</span>
+      </a>
+
+      <ul id="masterMenu" class="submenu">
+
+        <li>
+          <a href="#" onclick="loadPage('user-management')">
+            👤 User Management
+          </a>
+        </li>
+
+        <li>
+          <a href="#" onclick="loadPage('settings')">
+            🔧 Settings App
+          </a>
+        </li>
+
+      </ul>
+
+    </li>
+
+    <!-- Monitoring Pengajuan -->
+    <li class="menu-group">
+
+      <a href="#" onclick="toggleMenu('pengajuanMenu'); return false;">
+        <span>📋</span>
+        Modul
+        <span class="arrow">▼</span>
+      </a>
+
+      <ul id="pengajuanMenu" class="submenu">
+
+        <li>
+          <a href="#"
+            onclick="loadPage('fpb'); return false;">
+            📝 Form Pengajuan Barang/Jasa
+          </a>
+        </li>
+
+        <li><a href="#">📑 Verifikasi GA</a></li>
+
+        <li><a href="#">📑 Draft PP</a></li>
+
+        <li><a href="#">💰 Verifikasi FA & SMO</a></li>
+
+        <li><a href="#">🔍 Verifikasi IA</a></li>
+
+        <li><a href="#">✅ PP Approve</a></li>
+
+        <li><a href="#">🛒 Create PR</a></li>
+
+        <li><a href="#">📦 Create PO</a></li>
+
+        <li><a href="#">📥 Received</a></li>
+
+        <li><a href="#">🧾 Invoice</a></li>
+
+        <li><a href="#">💵 Payment</a></li>
+
+      </ul>
+
+    </li>
+
+    <!-- Approval -->
+    <li>
+
+      <a href="#" onclick="loadPage('approval')">
+        <span>✔️</span>
+        Approval
+      </a>
+
+    </li>
+
+    <!-- Report -->
+    <li>
+
+      <a href="#" onclick="loadPage('report')">
+        <span>📈</span>
+        Report
+      </a>
+
+    </li>
+
+    <!-- LOADER -->
+    <li class="menu-group">
+
+      <a href="#"
+        onclick="toggleMenu('loaderMenu'); return false;">
+
+        <span>📤</span>
+        Loader
+        <span class="arrow">▼</span>
+
+      </a>
+
+      <ul id="loaderMenu" class="submenu">
+
+        <!-- AUTO GENERATE -->
+
+      </ul>
+
+    </li>
+
+  </ul>
+
+</div>

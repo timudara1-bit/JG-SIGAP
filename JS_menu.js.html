@@ -1,0 +1,42 @@
+  <script>
+  function toggleMenu(menuId) {
+
+    document.querySelectorAll('.submenu').forEach(menu => {
+      if (menu.id !== menuId) {
+        menu.classList.remove('show');
+
+        const arrow =
+          menu.previousElementSibling?.querySelector('.arrow');
+
+        if (arrow) arrow.textContent = '▼';
+      }
+    });
+
+    const menu = document.getElementById(menuId);
+
+    if (!menu) return;
+
+    menu.classList.toggle('show');
+
+    const arrow =
+      menu.previousElementSibling?.querySelector('.arrow');
+
+    if (arrow) {
+      arrow.textContent =
+        menu.classList.contains('show')
+          ? '▲'
+          : '▼';
+    }
+  }
+
+  function toggleProfileMenu(){
+
+    document
+      .getElementById("profileDropdown")
+      .classList
+      .toggle("show");
+
+  }
+
+
+</script>

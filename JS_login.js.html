@@ -1,0 +1,56 @@
+<script>
+
+function login(){
+
+  const email =
+    document.getElementById("email").value;
+
+  const password =
+    document.getElementById("password").value;
+
+  google.script.run
+
+    .withSuccessHandler(res => {
+
+      window.location.href =
+        "?page=Index";
+
+    })
+
+    .withFailureHandler(err => {
+
+      alert(err.message);
+
+    })
+
+    .loginUser(
+      email,
+      password
+    );
+
+}
+
+  // function login(){
+
+  //   google.script.run
+  //     .withSuccessHandler(function(result){
+
+  //       if(result.success){
+
+  //         google.script.run
+  //           .withSuccessHandler(function(url){
+
+  //             window.top.location.href =
+  //               url + "?page=Index";
+
+  //           })
+  //           .getAppUrl();
+
+  //       }
+
+  //     })
+  //     .loginUser();
+
+  // }
+
+</script>

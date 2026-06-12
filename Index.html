@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+
+  <base target="_top">
+
+  <?!= include('CSS_app.css'); ?>
+  <?!= include('CSS_Dashboard.css'); ?>
+  <script>
+      // Menggunakan tanda kutip agar hasil string JSON dari server dibaca sebagai string teks biasa dulu di browser
+      var rawData = '<?!= initialData ?>';
+      
+      // Ambil data jika string tidak kosong, jika kosong berikan objek kosong {}
+      window.APP_INITIAL_DATA = rawData ? JSON.parse(rawData) : {};
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+</head>
+
+<body>
+
+  <?!= include('Layout_Navbar'); ?>
+
+  <div class="main-layout">
+
+    <?!= include('Layout_Sidebar'); ?>
+
+    <div id="content">
+
+      <?!= include('Page_Dashboard'); ?>
+
+    </div>
+
+  </div>
+
+  <?!= include('Layout_Footer'); ?>
+
+  <?!= include('JS_menu.js'); ?>
+  <?!= include('JS_dashboard.js'); ?>
+  <?!= include('JS_app.js'); ?>
+
+</body>
+
+</html>

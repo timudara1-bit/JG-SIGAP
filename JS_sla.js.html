@@ -1,0 +1,22 @@
+<script>
+function loadSLAEngine(){
+
+  google.script.run
+    .withSuccessHandler(renderSLAEngine)
+    .getSLAEngine();
+
+}
+
+function loadSLA(){
+
+  google.script.run
+    .withSuccessHandler(renderSLA)
+    .withFailureHandler(err => {
+      console.error("SLA ERROR:", err);
+    })
+    .getDashboardSLA();
+
+}
+
+
+</script>

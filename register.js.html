@@ -1,0 +1,40 @@
+function register() {
+
+  const data = {
+    nama: document
+      .getElementById("nama")
+      .value
+      .trim(),
+
+    email: document
+      .getElementById("email")
+      .value
+      .trim(),
+
+    password: document
+      .getElementById("password")
+      .value,
+
+    confirmPassword: document
+      .getElementById("confirmPassword")
+      .value
+  };
+
+  google.script.run
+    .withSuccessHandler(function(result){
+
+      document
+        .getElementById("message")
+        .innerHTML = result.message;
+
+    })
+    .withFailureHandler(function(error){
+
+      document
+        .getElementById("message")
+        .innerHTML = error.message;
+
+    })
+    .registerUser(data);
+
+}
