@@ -4,7 +4,7 @@ class FpbRepository {
 
     const sheet =
       Repository.getSheet(
-        "10_T_FPB_HEADER"
+        CONFIG.SHEET.FPB_HEADER
       );
 
     sheet.appendRow([
@@ -28,7 +28,7 @@ class FpbRepository {
 
     const sheet =
       Repository.getSheet(
-        "11_T_FPB_DETAIL"
+        CONFIG.SHEET.FPB_DETAIL
       );
 
     items.forEach(item=>{
@@ -63,13 +63,13 @@ class FpbRepository {
 
   static submitFPB(fpbId,noFPB){
 
-  const sheet =
-    Repository.getSheet(
-      "10_T_FPB_HEADER"
-    );
+    const sheet =
+      Repository.getSheet(
+        CONFIG.SHEET.FPB_HEADER
+      );
 
-  const data =
-    sheet.getDataRange().getValues();
+    const data =
+      sheet.getDataRange().getValues();
 
   for(let i=1;i<data.length;i++){
 

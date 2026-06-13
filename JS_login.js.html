@@ -8,19 +8,28 @@ function login(){
   const password =
     document.getElementById("password").value;
 
+  const loginBox = document.getElementById("loginBox");
+  const loginButton = document.getElementById("loginButton");
+  const buttonLoader = document.getElementById("buttonLoader");
+
+  loginBox.classList.add("loading");
+  loginButton.disabled = true;
+  buttonLoader.classList.add("active");
+
   google.script.run
 
     .withSuccessHandler(res => {
-
-      window.location.href =
-        "?page=Index";
-
+      const role = res && res.user ? (res.user.role_code || res.user.role) : null;
+      const page = getLandingPageByRole(role);
+      const baseUrl = window.top.location.href.split("?")[0];
+      window.top.location.replace(baseUrl + "?page=" + page + "&_=" + Date.now());
     })
 
     .withFailureHandler(err => {
-
+      loginBox.classList.remove("loading");
+      loginButton.disabled = false;
+      buttonLoader.classList.remove("active");
       alert(err.message);
-
     })
 
     .loginUser(
@@ -28,6 +37,37 @@ function login(){
       password
     );
 
+}
+
+function getLandingPageByRole(role) {
+  if (!role) return "dashboard";
+
+  const normalized = String(role || "").trim().toUpperCase();
+
+  switch (normalized) {
+    case "REQUESTER":
+      return "fpb";
+    case "GA_VERIFY":
+    case "GA_PP":
+    case "FAT":
+    case "IA":
+    case "PROCUREMENT":
+    case "WAREHOUSE":
+    case "FINANCE":
+    case "ADMIN":
+    case "SUPERADMIN":
+    case "GA_PR":
+    case "GA_RECEIVE":
+    case "GA_INVOICE":
+    case "PAYMENT":
+    case "USER_APPROVE_L1":
+    case "USER_APPROVE_L2":
+    case "GA_APPROVE_L1":
+    case "GA_APPROVE_L2":
+    case "USER":
+    default:
+      return "dashboard";
+  }
 }
 
   // function login(){

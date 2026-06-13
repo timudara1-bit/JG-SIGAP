@@ -1,40 +1,31 @@
 class SecurityService {
 
   static generateSalt() {
-    return Utilities.getUuid().replace(/-/g, "");
+    return Utilities.getUuid();
   }
 
   static hashPassword(password, salt) {
-
-    const ITERATIONS = 100000;
-
-    let hash = password + salt;
+    const plainPassword = String(password || "");
+    const plainSalt = String(salt || "");
+    const ITERATIONS = 1000;
+    let hash = plainPassword + plainSalt;
 
     for (let i = 0; i < ITERATIONS; i++) {
-
-      const digest = Utilities.computeDigest(
+      const rawHash = Utilities.computeDigest(
         Utilities.DigestAlgorithm.SHA_256,
         hash
       );
 
-      hash = Utilities.base64Encode(digest);
-
+      hash = rawHash
+        .map(b => (b + 256).toString(16).slice(-2))
+        .join("");
     }
 
     return hash;
   }
 
-  static verifyPassword(
-    password,
-    salt,
-    storedHash
-  ) {
-
-    const hash =
-      this.hashPassword(password, salt);
-
-    return hash === storedHash;
-
+  static verifyPassword(password, salt, passwordHash) {
+    if (!passwordHash) return false;
+    return this.hashPassword(password, salt) === passwordHash;
   }
-
 }

@@ -101,9 +101,8 @@ function logout(){
       google.script.run
 
         .withSuccessHandler(function(){
-
-          window.location.href =
-            "?page=login";
+          const baseUrl = window.top.location.href.split("?")[0];
+          window.open(baseUrl + "?page=login&_=" + Date.now(), "_top");
 
         })
 
@@ -129,13 +128,19 @@ function logout(){
    CURRENT USER
 ========================= */
 
-function loadCurrentUser(){
+function loadCurrentUser(onReady){
 
   google.script.run
 
     .withSuccessHandler(function(user){
 
-      if(!user) return;
+      if(!user) {
+        if (typeof onReady === 'function') onReady();
+        return;
+      }
+
+      window.CURRENT_USER = user;
+      window.CURRENT_ROLE = user.role_code || user.role || "";
 
       const el =
         document.getElementById(
@@ -143,19 +148,91 @@ function loadCurrentUser(){
         );
 
       if(el){
-
         el.innerHTML =
           user.nama +
           " (" +
-          user.role +
+          (user.role_code || user.role || "") +
           ")";
+      }
 
+      const emailEl = document.getElementById("userEmail");
+      if(emailEl && user.email){
+        emailEl.innerHTML = user.email;
+      }
+
+      const photoEl = document.getElementById("userPhoto");
+      if(photoEl){
+        const avatarName = encodeURIComponent(user.nama || "User");
+        photoEl.src = `https://ui-avatars.com/api/?name=${avatarName}&background=0d6efd&color=fff&bold=true`;
+        photoEl.alt = user.nama || "User";
+      }
+
+      if (user.role_code) {
+        loadSidebarMenu(user.role_code);
+        loadRoleActions(user.role_code, onReady);
+      } else if (user.role) {
+        loadSidebarMenu(user.role);
+        loadRoleActions(user.role, onReady);
+      } else {
+        if (typeof onReady === 'function') onReady();
       }
 
     })
 
     .getCurrentUser();
 
+}
+
+function loadRoleActions(roleCode, onReady) {
+  google.script.run
+    .withSuccessHandler(function(actions) {
+      window.CURRENT_ROLE_ACTIONS = Array.isArray(actions) ? actions : [];
+      if (typeof onReady === 'function') onReady();
+    })
+    .withFailureHandler(function(err) {
+      console.error("Failed to load role actions", err);
+      window.CURRENT_ROLE_ACTIONS = [];
+      if (typeof onReady === 'function') onReady();
+    })
+    .getRoleActions(roleCode);
+}
+
+function applyRolePermissions() {
+  const user = window.CURRENT_USER;
+  const actions = Array.isArray(window.CURRENT_ROLE_ACTIONS) ? window.CURRENT_ROLE_ACTIONS : [];
+  const role = window.CURRENT_ROLE || "";
+
+  document.querySelectorAll('[data-role-action]').forEach(el => {
+    const raw = el.getAttribute('data-role-action') || "";
+    const allowedActions = raw.split(/[,\s]+/).map(a => a.trim()).filter(Boolean);
+    const visible = allowedActions.some(action => actions.includes(action));
+
+    if (!visible) {
+      if (el.tagName === 'BUTTON' || el.tagName === 'A' || el.tagName === 'INPUT' || el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+        el.disabled = true;
+        el.style.display = 'none';
+      } else {
+        el.style.display = 'none';
+      }
+    }
+  });
+
+  document.querySelectorAll('[data-role-only]').forEach(el => {
+    const raw = el.getAttribute('data-role-only') || "";
+    const allowedRoles = raw.split(/[,\s]+/).map(r => r.trim().toUpperCase()).filter(Boolean);
+    if (allowedRoles.length === 0) return;
+    if (!allowedRoles.includes(role.toUpperCase())) {
+      el.style.display = 'none';
+    }
+  });
+
+  document.querySelectorAll('[data-role-except]').forEach(el => {
+    const raw = el.getAttribute('data-role-except') || "";
+    const deniedRoles = raw.split(/[,\s]+/).map(r => r.trim().toUpperCase()).filter(Boolean);
+    if (deniedRoles.includes(role.toUpperCase())) {
+      el.style.display = 'none';
+    }
+  });
 }
 
 function loadDashboard(){
@@ -242,15 +319,28 @@ function setValue(id,value){
 
 }
 
+function getQueryParam(name) {
+  const params = new URLSearchParams(window.location.search);
+  return params.get(name);
+}
+
 /* =========================
    INITIAL LOAD
 ========================= */
 
 window.onload = function(){
 
-  loadCurrentUser();
-
-  loadDashboard();
+  loadCurrentUser(function(){
+    const requestedPage = getQueryParam('page');
+    if (requestedPage && requestedPage !== 'login') {
+      loadPage(requestedPage);
+    } else {
+      loadDashboard();
+      if (typeof applyRolePermissions === 'function') {
+        applyRolePermissions();
+      }
+    }
+  });
 
 };
 

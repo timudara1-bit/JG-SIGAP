@@ -1,122 +1,102 @@
 class DashboardService {
 
   static getDashboardData() {
-
     return {
-
-      fpb: this.getCountByPeriod(
-        "10_T_FPB_HEADER",
-        3 // kolom tanggal fpb
-      ),
-
-      pp: this.getCountByPeriod(
-        "20_T_PP_HEADER",
-        4
-      ),
-
-      pr: this.getCountByPeriod(
-        "30_T_PR_HEADER",
-        4
-      ),
-
-      receive: this.getCountByPeriod(
-        "50_T_RECEIVED_HEADER",
-        3
-      ),
-
-      invoice: this.getCountByPeriod(
-        "60_T_INVOICE_HEADER",
-        4
-      ),
-
-      payment: this.getCountByPeriod(
-        "70_T_PAYMENT_HEADER",
-        4
-      )
-
+      fpb: this.getCountByPeriod(CONFIG.SHEET.FPB_HEADER, "request_date"),
+      pp: this.getCountByPeriod(CONFIG.SHEET.PP_HEADER, "pp_date"),
+      pr: this.getCountByPeriod(CONFIG.SHEET.PR_HEADER, "pr_date"),
+      receive: this.getCountByPeriod(CONFIG.SHEET.RECEIVE_HEADER, "receive_date"),
+      invoice: this.getCountByPeriod(CONFIG.SHEET.INVOICE_HEADER, "invoice_date"),
+      payment: this.getCountByPeriod(CONFIG.SHEET.PAYMENT_HEADER, "payment_date"),
+      status: this.getStatusSummary()
     };
-
   }
 
-  static getCountByPeriod(sheetName,dateColumn){
+  static getStatusSummary() {
+    const result = {};
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(CONFIG.SHEET.DOCUMENT_STATUS);
+    if (!sheet) return result;
 
-    const sheet =
-      SpreadsheetApp
-      .getActiveSpreadsheet()
-      .getSheetByName(sheetName);
+    const values = sheet.getDataRange().getValues();
+    if (values.length < 2) return result;
 
-    const data =
-      sheet.getDataRange()
-      .getValues();
+    const headers = values[0];
+    const rows = values.slice(1).map(r => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = r[i]);
+      return obj;
+    });
 
-    const rows =
-      data.slice(1);
-
-    const now =
-      new Date();
-
-    const startToday =
-      new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate()
-      );
-
-    const startWeek =
-      new Date(startToday);
-
-    startWeek.setDate(
-      startToday.getDate() -
-      startToday.getDay()
-    );
-
-    const startMonth =
-      new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        1
-      );
-
-    const startYear =
-      new Date(
-        now.getFullYear(),
-        0,
-        1
-      );
-
-    let result = {
-
-      hari:0,
-      minggu:0,
-      bulan:0,
-      tahun:0,
-      total:rows.length
-
-    };
-
-    rows.forEach(row=>{
-
-      const trxDate =
-        new Date(
-          row[dateColumn - 1]
-        );
-
-      if(trxDate >= startToday)
-        result.hari++;
-
-      if(trxDate >= startWeek)
-        result.minggu++;
-
-      if(trxDate >= startMonth)
-        result.bulan++;
-
-      if(trxDate >= startYear)
-        result.tahun++;
-
+    rows.forEach(r => {
+      const moduleName = r.current_module || "UNKNOWN";
+      const status = r.status || "UNKNOWN";
+      const key = moduleName + "_" + status;
+      result[key] = (result[key] || 0) + 1;
     });
 
     return result;
-
   }
 
+  static getCountByPeriod(sheetName, dateFieldOrColumn) {
+
+    const sheet = SpreadsheetApp.getActiveSpreadsheet().getSheetByName(sheetName);
+
+    const empty = {
+      hari: 0,
+      minggu: 0,
+      bulan: 0,
+      tahun: 0,
+      total: 0
+    };
+
+    if (!sheet) return empty;
+
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) return empty;
+
+    const headers = data[0];
+    const rows = data.slice(1);
+
+    let dateIndex;
+    if (typeof dateFieldOrColumn === "number") {
+      dateIndex = dateFieldOrColumn - 1;
+    } else {
+      dateIndex = headers.indexOf(dateFieldOrColumn);
+    }
+
+    if (dateIndex < 0) return {
+      ...empty,
+      total: rows.length
+    };
+
+    const now = new Date();
+    const startToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startWeek = new Date(startToday);
+    startWeek.setDate(startToday.getDate() - startToday.getDay());
+    const startMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const startYear = new Date(now.getFullYear(), 0, 1);
+
+    const result = {
+      hari: 0,
+      minggu: 0,
+      bulan: 0,
+      tahun: 0,
+      total: rows.length
+    };
+
+    rows.forEach(row => {
+      const raw = row[dateIndex];
+      if (!raw) return;
+
+      const trxDate = raw instanceof Date ? raw : new Date(raw);
+      if (isNaN(trxDate.getTime())) return;
+
+      if (trxDate >= startToday) result.hari++;
+      if (trxDate >= startWeek) result.minggu++;
+      if (trxDate >= startMonth) result.bulan++;
+      if (trxDate >= startYear) result.tahun++;
+    });
+
+    return result;
+  }
 }

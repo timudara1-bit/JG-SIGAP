@@ -1,0 +1,605 @@
+<div class="user-management-container">
+
+  <!-- Header Section -->
+  <div class="um-header">
+    <h2>👤 Manajemen Pengguna</h2>
+    <button class="btn btn-primary" onclick="showAddUserModal()">
+      + Tambah User Baru
+    </button>
+  </div>
+
+  <!-- Search and Filter Section -->
+  <div class="um-search-section">
+    <div class="search-box">
+      <input type="text" 
+             id="searchInput" 
+             placeholder="Cari user (nama, email, username...)"
+             onkeyup="debounceSearch(this.value)">
+      <span class="search-icon">🔍</span>
+    </div>
+    
+    <div class="filter-options">
+      <label>
+        <input type="checkbox" id="filterActive" checked onchange="applyFilters()">
+        User Aktif
+      </label>
+      <label>
+        <input type="checkbox" id="filterInactive" onchange="applyFilters()">
+        User Nonaktif
+      </label>
+    </div>
+  </div>
+
+  <!-- User Table Section -->
+  <div class="um-table-section">
+    <table id="userTable" class="user-table">
+      <thead>
+        <tr>
+          <th>Username</th>
+          <th>Nama Lengkap</th>
+          <th>Email</th>
+          <th>Role</th>
+          <th>Departemen</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody id="userTableBody">
+        <tr>
+          <td colspan="7" style="text-align: center; padding: 20px;">
+            <div class="loading-spinner">Loading...</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="um-pagination">
+    <button class="btn-pagination" onclick="previousPage()">&lt; Sebelumnya</button>
+    <span id="pageInfo">Halaman 1</span>
+    <button class="btn-pagination" onclick="nextPage()">Selanjutnya &gt;</button>
+  </div>
+
+</div>
+
+<!-- Modal: Add/Edit User -->
+<div id="userModal" class="modal" style="display: none;">
+  <div class="modal-content">
+    <div class="modal-header">
+      <h3 id="modalTitle">Tambah User Baru</h3>
+      <span class="close" onclick="closeUserModal()">&times;</span>
+    </div>
+
+    <div class="modal-body">
+      <form id="userForm" onsubmit="submitUserForm(event)">
+        
+        <div class="form-group">
+          <label for="username">Username <span class="required">*</span></label>
+          <input type="text" id="username" name="username" required>
+          <small class="help-text">Username unik untuk login</small>
+        </div>
+
+        <div class="form-group">
+          <label for="email">Email <span class="required">*</span></label>
+          <input type="email" id="email" name="email" required>
+        </div>
+
+        <div class="form-group">
+          <label for="fullName">Nama Lengkap</label>
+          <input type="text" id="fullName" name="full_name">
+        </div>
+
+        <div class="form-group">
+          <label for="employeeId">Employee ID</label>
+          <input type="text" id="employeeId" name="employee_id">
+        </div>
+
+        <div class="form-group">
+          <label for="nik">NIK</label>
+          <input type="text" id="nik" name="nik">
+        </div>
+
+        <div class="form-group">
+          <label for="roleCode">Role <span class="required">*</span></label>
+          <select id="roleCode" name="role_code" required onchange="onRoleChange()">
+            <option value="">-- Pilih Role --</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="approverLevel">Tingkat Approver</label>
+          <input type="number" id="approverLevel" name="approver_level" min="0" value="0">
+          <small class="help-text">Level untuk approval workflow (0 = bukan approver)</small>
+        </div>
+
+        <div class="form-group">
+          <label for="departmentId">Departemen</label>
+          <input type="text" id="departmentId" name="department_id">
+        </div>
+
+        <div class="form-group" id="passwordGroup">
+          <label for="password">Password <span class="required">*</span></label>
+          <input type="password" id="password" name="password" placeholder="Biarkan kosong untuk gunakan default">
+          <small class="help-text">Default: password123</small>
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" id="isActive" name="is_active" checked>
+            User Aktif
+          </label>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" onclick="closeUserModal()">Batal</button>
+          <button type="submit" class="btn btn-primary">Simpan</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: User Detail/Activity -->
+<div id="userDetailModal" class="modal" style="display: none;">
+  <div class="modal-content" style="width: 600px;">
+    <div class="modal-header">
+      <h3>Detail User</h3>
+      <span class="close" onclick="closeUserDetailModal()">&times;</span>
+    </div>
+
+    <div class="modal-body">
+      <div class="user-detail-info">
+        <div class="detail-row">
+          <span class="label">Username:</span>
+          <span id="detailUsername" class="value">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Nama:</span>
+          <span id="detailName" class="value">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Email:</span>
+          <span id="detailEmail" class="value">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Role:</span>
+          <span id="detailRole" class="value">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Departemen:</span>
+          <span id="detailDept" class="value">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Status:</span>
+          <span id="detailStatus" class="value">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Dibuat:</span>
+          <span id="detailCreated" class="value">-</span>
+        </div>
+        <div class="detail-row">
+          <span class="label">Login Terakhir:</span>
+          <span id="detailLastLogin" class="value">-</span>
+        </div>
+      </div>
+
+      <div class="detail-actions">
+        <button class="btn btn-sm btn-warning" onclick="editCurrentUser()" data-role-action="manage_users">
+          ✏️ Edit
+        </button>
+        <button class="btn btn-sm btn-info" onclick="showUserActivity()" data-role-action="manage_users">
+          📋 Aktivitas
+        </button>
+        <button class="btn btn-sm btn-danger" onclick="deleteCurrentUser()" data-role-action="manage_users">
+          🗑️ Hapus
+        </button>
+        <button class="btn btn-sm btn-secondary" onclick="resetUserPassword()" data-role-action="manage_users">
+          🔑 Reset Password
+        </button>
+      </div>
+
+      <div id="activitySection" style="display: none; margin-top: 20px;">
+        <h4>Riwayat Aktivitas (10 Terakhir)</h4>
+        <div id="activityList" class="activity-list">
+          <p>Loading...</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeUserDetailModal()">Tutup</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: Confirm Action -->
+<div id="confirmModal" class="modal" style="display: none;">
+  <div class="modal-content" style="width: 400px;">
+    <div class="modal-header">
+      <h3>Konfirmasi</h3>
+      <span class="close" onclick="closeConfirmModal()">&times;</span>
+    </div>
+    <div class="modal-body">
+      <p id="confirmMessage">Apakah Anda yakin?</p>
+    </div>
+    <div class="modal-footer">
+      <button type="button" class="btn btn-secondary" onclick="closeConfirmModal()">Batal</button>
+      <button type="button" class="btn btn-danger" id="confirmBtn" onclick="executeConfirmedAction()">Lanjutkan</button>
+    </div>
+  </div>
+</div>
+
+<style>
+.user-management-container {
+  padding: 20px;
+  background-color: #f5f5f5;
+  border-radius: 8px;
+}
+
+.um-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.um-header h2 {
+  margin: 0;
+  color: #333;
+}
+
+.um-search-section {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.search-box {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.search-box input {
+  width: 100%;
+  padding: 10px 35px 10px 15px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+}
+
+.search-icon {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none;
+}
+
+.filter-options {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.filter-options label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.um-table-section {
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  overflow-x: auto;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+.user-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.user-table thead {
+  background-color: #f8f9fa;
+  border-bottom: 2px solid #dee2e6;
+}
+
+.user-table th,
+.user-table td {
+  padding: 12px;
+  text-align: left;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.user-table th {
+  font-weight: 600;
+  color: #495057;
+}
+
+.user-table tbody tr:hover {
+  background-color: #f8f9fa;
+  cursor: pointer;
+}
+
+.user-table tbody tr.inactive {
+  opacity: 0.6;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 5px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.status-active {
+  background-color: #d4edda;
+  color: #155724;
+}
+
+.status-inactive {
+  background-color: #f8d7da;
+  color: #721c24;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 5px;
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+
+.btn-primary {
+  background-color: #007bff;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #0056b3;
+}
+
+.btn-secondary {
+  background-color: #6c757d;
+  color: white;
+}
+
+.btn-secondary:hover {
+  background-color: #545b62;
+}
+
+.btn-info {
+  background-color: #17a2b8;
+  color: white;
+}
+
+.btn-info:hover {
+  background-color: #117a8b;
+}
+
+.btn-danger {
+  background-color: #dc3545;
+  color: white;
+}
+
+.btn-danger:hover {
+  background-color: #c82333;
+}
+
+.btn-warning {
+  background-color: #ffc107;
+  color: #333;
+}
+
+.btn-warning:hover {
+  background-color: #e0a800;
+}
+
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+
+.btn-pagination {
+  padding: 8px 12px;
+  margin: 0 5px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.btn-pagination:hover {
+  background-color: #0056b3;
+}
+
+.um-pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  background: white;
+  padding: 15px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.modal {
+  position: fixed;
+  z-index: 1000;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  background-color: rgba(0,0,0,0.4);
+  display: none;
+}
+
+.modal-content {
+  background-color: white;
+  margin: 5% auto;
+  padding: 0;
+  border-radius: 8px;
+  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.modal-header h3 {
+  margin: 0;
+}
+
+.close {
+  font-size: 28px;
+  font-weight: bold;
+  cursor: pointer;
+  color: #999;
+}
+
+.close:hover {
+  color: #000;
+}
+
+.modal-body {
+  padding: 20px;
+}
+
+.modal-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 15px 20px;
+  border-top: 1px solid #dee2e6;
+}
+
+.form-group {
+  margin-bottom: 15px;
+}
+
+.form-group label {
+  display: block;
+  margin-bottom: 5px;
+  font-weight: 500;
+  color: #333;
+}
+
+.form-group input,
+.form-group select {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid #ddd;
+  border-radius: 5px;
+  font-size: 14px;
+  box-sizing: border-box;
+}
+
+.form-group input:focus,
+.form-group select:focus {
+  outline: none;
+  border-color: #007bff;
+  box-shadow: 0 0 0 3px rgba(0,123,255,0.1);
+}
+
+.required {
+  color: red;
+}
+
+.help-text {
+  display: block;
+  font-size: 12px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.user-detail-info {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 5px;
+  margin-bottom: 15px;
+}
+
+.detail-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid #dee2e6;
+}
+
+.detail-row:last-child {
+  border-bottom: none;
+}
+
+.detail-row .label {
+  font-weight: 500;
+  color: #666;
+  min-width: 150px;
+}
+
+.detail-row .value {
+  color: #333;
+  word-break: break-all;
+}
+
+.detail-actions {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+  padding-top: 15px;
+  border-top: 1px solid #dee2e6;
+}
+
+.activity-list {
+  background: #f8f9fa;
+  padding: 10px;
+  border-radius: 5px;
+  max-height: 200px;
+  overflow-y: auto;
+  font-size: 12px;
+}
+
+.activity-item {
+  padding: 8px;
+  border-bottom: 1px solid #dee2e6;
+  color: #666;
+}
+
+.activity-item:last-child {
+  border-bottom: none;
+}
+
+.loading-spinner {
+  color: #999;
+  font-style: italic;
+}
+</style>

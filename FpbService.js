@@ -2,6 +2,7 @@ class FpbService {
 
   static createDraft(payload){
 
+    assertRoleCan("create_fpb");
     const session =
       SessionService.getSession();
 
@@ -60,6 +61,7 @@ class FpbService {
 
   static submitFPB(fpbId){
 
+    assertRoleCan("create_fpb");
     const session =
       SessionService.getSession();
 

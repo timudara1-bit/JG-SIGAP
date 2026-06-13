@@ -12,7 +12,7 @@ class NumberingService {
 
   static getNextNumber(docType, dept = "") {
 
-    const sheet = Repository.getSheet("09_M_NUMBERING");
+    const sheet = Repository.getSheet(CONFIG.SHEET.NUMBERING);
 
     const data = sheet.getDataRange().getValues();
 

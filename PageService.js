@@ -16,9 +16,22 @@ function loadPage(page) {
 
 function getPage(page){
 
+  const session = SessionService.getSession();
+  if (!session) {
+    throw new Error("Session tidak ditemukan. Silakan login ulang.");
+  }
+
+  const pageName = String(page || "").trim().toLowerCase();
+  if (!isPageAccessible(session.role_code || session.role || "", pageName)) {
+    const template = HtmlService.createTemplateFromFile("Page_AccessDenied");
+    template.pageName = pageName;
+    template.role = session.role_code || session.role || "Unknown";
+    return template.evaluate().getContent();
+  }
+
   let fileName = "";
 
-  switch(page){
+  switch(pageName){
 
     case "dashboard":
       fileName = "Page_Dashboard";
@@ -28,11 +41,23 @@ function getPage(page){
       fileName = "Page_FPB";
       break;
 
+    case "user-management":
+      fileName = "Page_UserManagement";
+      break;
+
+    case "receive":
+    case "invoice":
+    case "payment":
+      const template = HtmlService.createTemplateFromFile("Page_Generic");
+      template.pageName = pageName;
+      template.role = session.role_code || session.role || "Unknown";
+      return template.evaluate().getContent();
+
     default:
-      throw new Error(
-        "Page tidak ditemukan: " +
-        page
-      );
+      const template2 = HtmlService.createTemplateFromFile("Page_Generic");
+      template2.pageName = pageName;
+      template2.role = session.role_code || session.role || "Unknown";
+      return template2.evaluate().getContent();
 
   }
 
@@ -55,12 +80,28 @@ function initPage(page){
       loadFPB();
       break;
 
+    case "user-management":
+      loadUserManagement();
+      break;
+
     case "pp":
       loadPP();
       break;
 
     case "pr":
       loadPR();
+      break;
+
+    case "receive":
+      loadReceive();
+      break;
+
+    case "invoice":
+      loadInvoice();
+      break;
+
+    case "payment":
+      loadPayment();
       break;
 
   }

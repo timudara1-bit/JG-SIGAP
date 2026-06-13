@@ -4,7 +4,7 @@ class RoleService {
 
     return {
 
-      USER: [
+      REQUESTER: [
         "Dashboard",
         "Buat FPB",
         "FPB Saya"
@@ -13,14 +13,12 @@ class RoleService {
       GA_VERIFY: [
         "Dashboard",
         "Verifikasi FPB",
-        "Create PP",
         "Monitoring"
       ],
 
-      GA_INVOICE: [
+      GA_PP: [
         "Dashboard",
-        "Verifikasi FPB",
-        "Invoice",
+        "PP Draft",
         "Monitoring"
       ],
 
@@ -34,20 +32,37 @@ class RoleService {
         "Approval PP"
       ],
 
-      SCM: [
+      PROCUREMENT: [
         "Dashboard",
         "PR",
         "PO",
-        "Received"
+        "Receive",
+        "Monitoring"
+      ],
+
+      WAREHOUSE: [
+        "Dashboard",
+        "Receive",
+        "Monitoring"
       ],
 
       FINANCE: [
         "Dashboard",
         "Invoice",
-        "Payment"
+        "Payment",
+        "Monitoring"
       ],
 
       ADMIN: [
+        "Dashboard",
+        "Master User",
+        "Master Vendor",
+        "Approval Matrix",
+        "SLA",
+        "System Setting"
+      ],
+
+      SUPERADMIN: [
         "Dashboard",
         "Master User",
         "Master Vendor",

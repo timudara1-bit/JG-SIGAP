@@ -11,7 +11,7 @@
 
 <body>
 
-<div class="login-box">
+<div class="login-box" id="loginBox">
   <img src="https://drive.google.com/thumbnail?id=1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6" alt="Logo Perusahaan" class="logo">
 
   <h2>SIGAP</h2>
@@ -29,8 +29,9 @@
     id="password"
     placeholder="Password">
 
-  <button onclick="login()">
-    Login
+  <button class="login-button" id="loginButton" onclick="login()">
+    <span class="button-text">Login</span>
+    <span class="button-loader" id="buttonLoader"></span>
   </button>
 
 </div>

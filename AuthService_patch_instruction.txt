@@ -1,0 +1,25 @@
+PATCH AUTH SERVICE
+==================
+
+Di file AuthService.js, cari bagian return pada static login(email, password):
+
+return {
+  success: true,
+  user: { ... }
+};
+
+Tambahkan redirectUrl agar JS login tidak perlu menebak URL:
+
+return {
+  success: true,
+  redirectUrl: ScriptApp.getService().getUrl(),
+  user: {
+    ...user,
+    nama: employee.nama,
+    email: employee.email,
+    dept_code: employee.dept_code,
+    jabatan: employee.jabatan
+  }
+};
+
+Jika tidak ingin edit manual, login tetap bisa berjalan karena JS_login.js.html punya fallback URL browser.

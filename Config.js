@@ -1,97 +1,144 @@
+/**
+ * =====================================================
+ * CONFIG JG-SIGAP V2
+ * Database mengikuti JG-SIGAP_DATABASE_BLUEPRINT_V2
+ * =====================================================
+ */
 const CONFIG = {
 
   APP_NAME: "JG-SIGAP",
 
   SHEET: {
+    CONFIG: "00_M_CONFIG",
+
     USER: "01_M_USER",
     ROLE: "02_M_ROLE",
-    KARYAWAN: "MST_KARYAWAN"
+    DEPARTMENT: "03_M_DEPARTMENT",
+    EMPLOYEE: "04_M_EMPLOYEE",
+    KARYAWAN: "04_M_EMPLOYEE", // alias agar kode lama tidak error
+    USER_ROLE: "05_M_USER_ROLE",
+
+    APPROVAL_MATRIX: "06_M_APPROVAL_MATRIX",
+    WORKFLOW_STEP: "07_M_WORKFLOW_STEP",
+    SLA: "08_M_SLA",
+    NUMBERING: "09_M_NUMBERING",
+
+    FPB_HEADER: "10_T_FPB_HEADER",
+    FPB_DETAIL: "11_T_FPB_DETAIL",
+
+    UNDERLYING_HEADER: "12_T_UNDERLYING_HEADER",
+    UNDERLYING_DETAIL: "13_T_UNDERLYING_DETAIL",
+    VENDOR_COMPARISON: "14_T_VENDOR_COMPARISON",
+
+    PP_HEADER: "20_T_PP_HEADER",
+    PP_DETAIL: "21_T_PP_DETAIL",
+    PP_SOURCE: "22_T_PP_SOURCE",
+
+    PR_HEADER: "30_T_PR_HEADER",
+    PR_DETAIL: "31_T_PR_DETAIL",
+    PO_HEADER: "40_T_PO_HEADER",
+    PO_DETAIL: "41_T_PO_DETAIL",
+    RECEIVE_HEADER: "50_T_RECEIVE_HEADER",
+    RECEIVE_DETAIL: "51_T_RECEIVE_DETAIL",
+    INVOICE_HEADER: "60_T_INVOICE_HEADER",
+    INVOICE_DETAIL: "61_T_INVOICE_DETAIL",
+    PAYMENT_HEADER: "70_T_PAYMENT_HEADER",
+    PAYMENT_DETAIL: "71_T_PAYMENT_DETAIL",
+
+    APPROVAL: "80_T_APPROVAL",
+    WORKFLOW_HISTORY: "81_T_WORKFLOW_HISTORY",
+    DOCUMENT_LINK: "82_T_DOCUMENT_LINK",
+    DOCUMENT_STATUS: "83_T_DOCUMENT_STATUS",
+    ITEM_LINK: "84_T_ITEM_LINK",
+
+    AUDIT_LOG: "90_T_AUDIT_LOG",
+    NOTIFICATION: "91_T_NOTIFICATION",
+    IMPORT_LOG: "92_T_IMPORT_LOG",
+    IMPORT_DETAIL: "93_T_IMPORT_DETAIL",
+    USER_SESSION: "94_T_USER_SESSION",
+
+    DASHBOARD: "95_R_DASHBOARD",
+    SLA_REPORT: "96_R_SLA",
+    BOTTLENECK: "97_R_BOTTLENECK",
+    WORKFLOW_REPORT: "98_R_WORKFLOW",
+
+    LOADER_CONFIG: "96_M_LOADER_CONFIG",
+    LOADER_TEMPLATE: "97_M_LOADER_TEMPLATE",
+    SYSTEM_LOG: "99_SYSTEM_LOG"
   },
 
   SESSION_TIMEOUT: 8,
 
   ROLE: {
-
-    // SYSTEM
     SUPERADMIN: "SUPERADMIN",
     ADMIN: "ADMIN",
-
-    // REQUESTER
-    USER: "USER",
+    REQUESTER: "REQUESTER",
+    GA_VERIFY: "GA_VERIFY",
+    GA_PP: "GA_PP",
+    FAT: "FAT",
+    IA: "IA",
+    PROCUREMENT: "PROCUREMENT",
+    WAREHOUSE: "WAREHOUSE",
+    FINANCE: "FINANCE",
+    GA_PR: "GA_PR",
+    GA_RECEIVE: "GA_RECEIVE",
+    GA_INVOICE: "GA_INVOICE",
+    PAYMENT: "PAYMENT",
     USER_APPROVE_L1: "USER-APPROVE-L1",
     USER_APPROVE_L2: "USER-APPROVE-L2",
-
-    // GENERAL AFFAIR
-    GA_VERIFY: "GA-VERIFY",
-    GA_PP: "GA-PP",
-    GA_PR: "GA-PR",
-    GA_RECEIVE: "GA-RECEIVE",
-    GA_INVOICE: "GA-INVOICE",
     GA_APPROVE_L1: "GA-APPROVE-L1",
     GA_APPROVE_L2: "GA-APPROVE-L2",
-
-    // FINANCE
-    FAT: "FAT",
-
-    // INTERNAL AUDIT
-    IA: "IA",
-
-    // SUPPLY CHAIN
-    SCM: "SCM",
-
-    // PAYMENT
-    PAYMENT: "PAYMENT"
-
+    USER: "USER"
   }
 
 };
 
 function getAppUrl() {
-
   return ScriptApp.getService().getUrl();
-
 }
 
-function getSheet(name){
-
-  return SpreadsheetApp
-    .getActive()
-    .getSheetByName(name);
-
+function getSheet(name) {
+  const sheetName = resolveSheetName(name);
+  return SpreadsheetApp.getActive().getSheetByName(sheetName);
 }
 
-function getSheetData(name){
-
-  const sh = getSheet(name);
-
-  if(!sh)
-    throw new Error(
-      "Sheet tidak ditemukan : " + name
-    );
-
+function getSheetData(name) {
+  const sheetName = resolveSheetName(name);
+  const sh = getSheet(sheetName);
+  if (!sh) {
+    throw new Error("Sheet tidak ditemukan : " + sheetName);
+  }
   return sh.getDataRange().getValues();
-
 }
 
-function isAdmin(role){
+function resolveSheetName(name) {
+  const alias = {
+    "00_CONFIG": CONFIG.SHEET.CONFIG,
+    "MST_KARYAWAN": CONFIG.SHEET.EMPLOYEE,
+    "TPL_KARYAWAN": CONFIG.SHEET.LOADER_TEMPLATE,
+    "AuditLog": CONFIG.SHEET.AUDIT_LOG,
+    "12_T_QUOTATION": CONFIG.SHEET.VENDOR_COMPARISON,
+    "50_T_RECEIVED_HEADER": CONFIG.SHEET.RECEIVE_HEADER,
+    "51_T_RECEIVED_DETAIL": CONFIG.SHEET.RECEIVE_DETAIL
+  };
+  return alias[name] || name;
+}
 
+function isAdmin(role) {
   return [
     CONFIG.ROLE.ADMIN,
     CONFIG.ROLE.SUPERADMIN
   ].includes(role);
-
 }
 
-function isGA(role){
-
+function isGA(role) {
   return [
-
     CONFIG.ROLE.GA_VERIFY,
     CONFIG.ROLE.GA_PP,
     CONFIG.ROLE.GA_PR,
     CONFIG.ROLE.GA_RECEIVE,
-    CONFIG.ROLE.GA_INVOICE
-
+    CONFIG.ROLE.GA_INVOICE,
+    CONFIG.ROLE.GA_APPROVE_L1,
+    CONFIG.ROLE.GA_APPROVE_L2
   ].includes(role);
-
 }

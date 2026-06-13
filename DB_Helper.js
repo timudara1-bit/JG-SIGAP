@@ -1,10 +1,21 @@
-function getSheetData(sheetName){
+function getSheetData(sheetName) {
+  sheetName = typeof resolveSheetName === "function" ? resolveSheetName(sheetName) : sheetName;
 
-  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const ss = SpreadsheetApp.getActive();
   const sheet = ss.getSheetByName(sheetName);
 
-  if(!sheet) throw new Error("Sheet not found: " + sheetName);
+  if (!sheet) {
+    throw new Error("Sheet tidak ditemukan: " + sheetName);
+  }
 
-  return sheet.getDataRange().getValues();
+  const data = sheet.getDataRange().getValues();
+  if (data.length < 2) return [];
 
+  const headers = data.shift();
+
+  return data.map(row => {
+    const obj = {};
+    headers.forEach((h, i) => obj[h] = row[i]);
+    return obj;
+  });
 }

@@ -9,6 +9,7 @@ class SessionService {
       nama: user.nama,
       email: user.email,
       role: user.role_code,
+      role_code: user.role_code,
       dept: user.dept_code,
 
       login_at: new Date().getTime()
@@ -43,7 +44,11 @@ class SessionService {
 
   }
 
-  
+  static destroy() {
+    PropertiesService
+      .getUserProperties()
+      .deleteProperty("SESSION");
+  }
 
 }
 

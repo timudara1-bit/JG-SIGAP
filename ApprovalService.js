@@ -30,6 +30,8 @@ class ApprovalService {
     remarks=""
   ){
 
+    assertRoleCan("approve_pp");
+
     this.updateApproval(
       approvalId,
       "APPROVED",
@@ -43,6 +45,8 @@ class ApprovalService {
     remarks=""
   ){
 
+    assertRoleCan("approve_pp");
+
     this.updateApproval(
       approvalId,
       "REJECTED",
@@ -55,6 +59,8 @@ class ApprovalService {
     approvalId,
     remarks=""
   ){
+
+    assertRoleCan("approve_pp");
 
     this.updateApproval(
       approvalId,

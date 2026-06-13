@@ -17,6 +17,10 @@
 
         }
 
+        if (typeof applyRolePermissions === 'function') {
+          applyRolePermissions();
+        }
+
       })
     .getPage(page);
 
@@ -41,39 +45,41 @@
 
   
   function logout() {
+    const confirmLogout = typeof Swal !== 'undefined';
 
-    google.script.run
-      .withSuccessHandler(function() {
+    const proceed = () => {
+      google.script.run
+        .withSuccessHandler(function() {
+          const baseUrl = window.top.location.href.split("?")[0];
+          window.top.location.replace(baseUrl + "?page=login&_=" + Date.now());
+        })
+        .withFailureHandler(function(err) {
+          console.error(err);
+          alert(err.message);
+        })
+        .logoutUser();
+    };
 
-        window.location.reload();
-
-      })
-      .logoutUser();
-
+    if (confirmLogout) {
+      Swal.fire({
+        title: "Logout ?",
+        text: "Apakah Anda yakin ingin keluar?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonText: "Ya",
+        cancelButtonText: "Tidak",
+        reverseButtons: true
+      }).then((result) => {
+        if (result.isConfirmed) {
+          proceed();
+        }
+      });
+    } else {
+      if (window.confirm("Apakah Anda yakin ingin keluar?")) {
+        proceed();
+      }
+    }
   }
-
-  function logout() {
-
-  console.log("Logout clicked");
-
-  google.script.run
-    .withSuccessHandler(function() {
-
-      console.log("Logout success");
-
-      window.location.reload();
-
-    })
-    .withFailureHandler(function(err){
-
-      console.error(err);
-
-      alert(err.message);
-
-    })
-    .logoutUser();
-
-}
 
 function loadLoaderMenu(){
 
@@ -113,6 +119,41 @@ function renderLoaderMenu(loaders){
 
   menu.innerHTML = html;
 
+}
+
+function loadSidebarMenu(roleCode) {
+  if (!roleCode) return;
+
+  google.script.run
+    .withSuccessHandler(function(items) {
+      const menu = document.getElementById("sidebarMenu");
+      if (!menu) return;
+
+      if (!Array.isArray(items) || items.length === 0) {
+        menu.innerHTML = '<li>Tidak ada menu tersedia</li>';
+        return;
+      }
+
+      let html = "";
+      items.forEach(item => {
+        const page = item.page || "";
+        const label = item.label || page;
+        const icon = item.icon || "";
+        html += `
+          <li>
+            <a href="#" onclick="loadPage('${page}'); return false;">
+              ${icon}${label}
+            </a>
+          </li>
+        `;
+      });
+
+      menu.innerHTML = html;
+    })
+    .withFailureHandler(function(err) {
+      console.error("Unable to load sidebar menu", err);
+    })
+    .getRoleMenuItems(roleCode);
 }
 
 document.addEventListener(

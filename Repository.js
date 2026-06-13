@@ -2,6 +2,10 @@ class Repository {
 
   static getSheet(sheetName) {
 
+    sheetName = typeof resolveSheetName === "function"
+      ? resolveSheetName(sheetName)
+      : sheetName;
+
     const sheet =
       SpreadsheetApp
         .getActiveSpreadsheet()
@@ -54,8 +58,9 @@ class Repository {
     const data =
       this.getAll(sheetName);
 
-    return data.find(
-      r => String(r[field]) === String(value)
+    return data.find(r =>
+      String(r[field] || "").trim().toLowerCase() ===
+      String(value || "").trim().toLowerCase()
     );
 
   }

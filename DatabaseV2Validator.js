@@ -1,0 +1,60 @@
+/**
+ * =====================================================
+ * DATABASE V2 VALIDATOR
+ * Jalankan manual: checkDatabaseV2()
+ * =====================================================
+ */
+function checkDatabaseV2() {
+  const required = [
+    CONFIG.SHEET.CONFIG,
+    CONFIG.SHEET.USER,
+    CONFIG.SHEET.ROLE,
+    CONFIG.SHEET.DEPARTMENT,
+    CONFIG.SHEET.EMPLOYEE,
+    CONFIG.SHEET.USER_ROLE,
+    CONFIG.SHEET.APPROVAL_MATRIX,
+    CONFIG.SHEET.WORKFLOW_STEP,
+    CONFIG.SHEET.SLA,
+    CONFIG.SHEET.NUMBERING,
+    CONFIG.SHEET.FPB_HEADER,
+    CONFIG.SHEET.FPB_DETAIL,
+    CONFIG.SHEET.UNDERLYING_HEADER,
+    CONFIG.SHEET.UNDERLYING_DETAIL,
+    CONFIG.SHEET.VENDOR_COMPARISON,
+    CONFIG.SHEET.PP_HEADER,
+    CONFIG.SHEET.PP_DETAIL,
+    CONFIG.SHEET.PP_SOURCE,
+    CONFIG.SHEET.PR_HEADER,
+    CONFIG.SHEET.PR_DETAIL,
+    CONFIG.SHEET.PO_HEADER,
+    CONFIG.SHEET.PO_DETAIL,
+    CONFIG.SHEET.RECEIVE_HEADER,
+    CONFIG.SHEET.RECEIVE_DETAIL,
+    CONFIG.SHEET.INVOICE_HEADER,
+    CONFIG.SHEET.INVOICE_DETAIL,
+    CONFIG.SHEET.PAYMENT_HEADER,
+    CONFIG.SHEET.PAYMENT_DETAIL,
+    CONFIG.SHEET.APPROVAL,
+    CONFIG.SHEET.WORKFLOW_HISTORY,
+    CONFIG.SHEET.DOCUMENT_LINK,
+    CONFIG.SHEET.DOCUMENT_STATUS,
+    CONFIG.SHEET.ITEM_LINK,
+    CONFIG.SHEET.AUDIT_LOG,
+    CONFIG.SHEET.NOTIFICATION,
+    CONFIG.SHEET.IMPORT_LOG,
+    CONFIG.SHEET.IMPORT_DETAIL,
+    CONFIG.SHEET.USER_SESSION,
+    CONFIG.SHEET.SYSTEM_LOG
+  ];
+
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const existing = ss.getSheets().map(s => s.getName());
+  const missing = required.filter(name => !existing.includes(name));
+
+  Logger.log("MISSING SHEETS = " + JSON.stringify(missing));
+
+  return {
+    success: missing.length === 0,
+    missing: missing
+  };
+}

@@ -1,0 +1,518 @@
+/**
+ * User Management JavaScript
+ * Client-side logic for user management interface
+ */
+
+let allUsers = [];
+let currentUsers = [];
+let filteredUsers = [];
+let currentPage = 1;
+let itemsPerPage = 10;
+let currentEditingUserId = null;
+let currentActionCallback = null;
+let availableRoles = [];
+
+/**
+ * Initialize user management page
+ */
+function loadUserManagement() {
+  loadUsers();
+  loadRoles();
+}
+
+/**
+ * Load all users from server
+ */
+function loadUsers() {
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        allUsers = response.data || [];
+        applyFilters();
+      } else {
+        showAlert("Error: " + response.error, "error");
+      }
+    })
+    .withFailureHandler(function(error) {
+      showAlert("Failed to load users: " + error, "error");
+    })
+    .getAllUsersController();
+}
+
+/**
+ * Load available roles for dropdown
+ */
+function loadRoles() {
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        availableRoles = response.data || [];
+        populateRoleDropdown();
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.log("Failed to load roles: " + error);
+    })
+    .getAvailableRolesController();
+}
+
+/**
+ * Populate role dropdown in form
+ */
+function populateRoleDropdown() {
+  const roleSelect = document.getElementById("roleCode");
+  availableRoles.forEach(role => {
+    const option = document.createElement("option");
+    option.value = role.role_code;
+    option.textContent = role.role_name || role.role_code;
+    roleSelect.appendChild(option);
+  });
+}
+
+/**
+ * Apply filters and update table
+ */
+function applyFilters() {
+  const showActive = document.getElementById("filterActive").checked;
+  const showInactive = document.getElementById("filterInactive").checked;
+
+  filteredUsers = allUsers.filter(user => {
+    if (user.is_active && !showActive) return false;
+    if (!user.is_active && !showInactive) return false;
+    return true;
+  });
+
+  currentPage = 1;
+  renderUserTable();
+}
+
+/**
+ * Debounced search
+ */
+let searchTimeout;
+function debounceSearch(searchTerm) {
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => {
+    performSearch(searchTerm);
+  }, 300);
+}
+
+/**
+ * Search users
+ */
+function performSearch(searchTerm) {
+  if (!searchTerm.trim()) {
+    applyFilters();
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        filteredUsers = response.data || [];
+        currentPage = 1;
+        renderUserTable();
+      } else {
+        showAlert("Search failed: " + response.error, "error");
+      }
+    })
+    .withFailureHandler(function(error) {
+      showAlert("Search error: " + error, "error");
+    })
+    .searchUsersController(searchTerm);
+}
+
+/**
+ * Render user table with pagination
+ */
+function renderUserTable() {
+  const tbody = document.getElementById("userTableBody");
+  tbody.innerHTML = "";
+
+  if (filteredUsers.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px;">Tidak ada user ditemukan</td></tr>';
+    updatePaginationInfo();
+    return;
+  }
+
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const pageUsers = filteredUsers.slice(startIndex, endIndex);
+
+  pageUsers.forEach((user, index) => {
+    const rowClass = !user.is_active ? "inactive" : "";
+    const statusBadgeClass = user.is_active ? "status-active" : "status-inactive";
+    const statusText = user.is_active ? "Aktif" : "Nonaktif";
+
+    const row = document.createElement("tr");
+    row.className = rowClass;
+    row.style.cursor = "pointer";
+    row.onclick = () => showUserDetail(user.user_id);
+
+    row.innerHTML = `
+      <td><strong>${escapeHtml(user.username)}</strong></td>
+      <td>${escapeHtml(user.full_name || "-")}</td>
+      <td>${escapeHtml(user.email)}</td>
+      <td>${escapeHtml(user.role_code || "-")}</td>
+      <td>${escapeHtml(user.department_id || "-")}</td>
+      <td><span class="status-badge ${statusBadgeClass}">${statusText}</span></td>
+      <td>
+        <div class="action-buttons">
+          <button class="btn btn-sm btn-warning" onclick="event.stopPropagation(); editUser('${user.user_id}')" data-role-action="manage_users" title="Edit">✏️</button>
+          <button class="btn btn-sm btn-danger" onclick="event.stopPropagation(); confirmDelete('${user.user_id}', '${escapeHtml(user.full_name || user.username)}')" data-role-action="manage_users" title="Delete">🗑️</button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(row);
+  });
+
+  updatePaginationInfo();
+}
+
+/**
+ * Update pagination info
+ */
+function updatePaginationInfo() {
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  document.getElementById("pageInfo").textContent = `Halaman ${currentPage} dari ${totalPages}`;
+}
+
+/**
+ * Pagination functions
+ */
+function previousPage() {
+  if (currentPage > 1) {
+    currentPage--;
+    renderUserTable();
+  }
+}
+
+function nextPage() {
+  const totalPages = Math.ceil(filteredUsers.length / itemsPerPage);
+  if (currentPage < totalPages) {
+    currentPage++;
+    renderUserTable();
+  }
+}
+
+/**
+ * Show add user modal
+ */
+function showAddUserModal() {
+  currentEditingUserId = null;
+  document.getElementById("modalTitle").textContent = "Tambah User Baru";
+  document.getElementById("userForm").reset();
+  document.getElementById("passwordGroup").style.display = "block";
+  document.getElementById("username").disabled = false;
+  document.getElementById("userModal").style.display = "block";
+}
+
+/**
+ * Show edit user modal
+ */
+function editUser(userId) {
+  currentEditingUserId = userId;
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success && response.data) {
+        const user = response.data;
+        document.getElementById("modalTitle").textContent = "Edit User: " + user.username;
+        document.getElementById("username").value = user.username;
+        document.getElementById("username").disabled = true;
+        document.getElementById("email").value = user.email;
+        document.getElementById("fullName").value = user.full_name || "";
+        document.getElementById("employeeId").value = user.employee_id || "";
+        document.getElementById("nik").value = user.nik || "";
+        document.getElementById("roleCode").value = user.role_code;
+        document.getElementById("approverLevel").value = user.approver_level || 0;
+        document.getElementById("departmentId").value = user.department_id || "";
+        document.getElementById("isActive").checked = user.is_active !== false;
+        document.getElementById("passwordGroup").style.display = "none";
+        document.getElementById("userModal").style.display = "block";
+      }
+    })
+    .getUserByIdController(userId);
+}
+
+/**
+ * Close user modal
+ */
+function closeUserModal() {
+  document.getElementById("userModal").style.display = "none";
+  document.getElementById("userForm").reset();
+  currentEditingUserId = null;
+}
+
+/**
+ * Submit user form
+ */
+function submitUserForm(event) {
+  event.preventDefault();
+
+  const formData = {
+    username: document.getElementById("username").value,
+    email: document.getElementById("email").value,
+    full_name: document.getElementById("fullName").value,
+    employee_id: document.getElementById("employeeId").value,
+    nik: document.getElementById("nik").value,
+    role_code: document.getElementById("roleCode").value,
+    approver_level: document.getElementById("approverLevel").value,
+    department_id: document.getElementById("departmentId").value,
+    is_active: document.getElementById("isActive").checked,
+    password: document.getElementById("password").value || "password123"
+  };
+
+  if (!formData.role_code) {
+    showAlert("Silakan pilih Role", "error");
+    return;
+  }
+
+  if (currentEditingUserId) {
+    // Update user
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          showAlert(response.message || "User berhasil diperbarui", "success");
+          closeUserModal();
+          loadUsers();
+        } else {
+          showAlert("Error: " + response.error, "error");
+        }
+      })
+      .withFailureHandler(function(error) {
+        showAlert("Failed to update user: " + error, "error");
+      })
+      .updateUserController(currentEditingUserId, formData);
+  } else {
+    // Create new user
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          showAlert(response.message || "User berhasil ditambahkan", "success");
+          closeUserModal();
+          loadUsers();
+        } else {
+          showAlert("Error: " + response.error, "error");
+        }
+      })
+      .withFailureHandler(function(error) {
+        showAlert("Failed to create user: " + error, "error");
+      })
+      .createUserController(formData);
+  }
+}
+
+/**
+ * Show user detail modal
+ */
+function showUserDetail(userId) {
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success && response.data) {
+        const user = response.data;
+        document.getElementById("detailUsername").textContent = user.username;
+        document.getElementById("detailName").textContent = user.full_name || "-";
+        document.getElementById("detailEmail").textContent = user.email;
+        document.getElementById("detailRole").textContent = user.role_code;
+        document.getElementById("detailDept").textContent = user.department_id || "-";
+        document.getElementById("detailStatus").textContent = user.is_active ? "Aktif" : "Nonaktif";
+        document.getElementById("detailCreated").textContent = formatDate(user.created_date);
+        document.getElementById("detailLastLogin").textContent = user.last_login ? formatDate(user.last_login) : "Belum pernah login";
+        
+        currentEditingUserId = userId;
+        document.getElementById("activitySection").style.display = "none";
+        document.getElementById("userDetailModal").style.display = "block";
+      }
+    })
+    .getUserByIdController(userId);
+}
+
+/**
+ * Close user detail modal
+ */
+function closeUserDetailModal() {
+  document.getElementById("userDetailModal").style.display = "none";
+}
+
+/**
+ * Edit current user
+ */
+function editCurrentUser() {
+  closeUserDetailModal();
+  editUser(currentEditingUserId);
+}
+
+/**
+ * Delete current user
+ */
+function deleteCurrentUser() {
+  const user = allUsers.find(u => u.user_id === currentEditingUserId);
+  confirmDelete(currentEditingUserId, user.full_name || user.username);
+}
+
+/**
+ * Confirm delete
+ */
+function confirmDelete(userId, userName) {
+  currentActionCallback = () => performDelete(userId);
+  document.getElementById("confirmMessage").textContent = 
+    "Apakah Anda yakin ingin menghapus user '" + escapeHtml(userName) + "'? Aksi ini tidak dapat dibatalkan.";
+  document.getElementById("confirmModal").style.display = "block";
+}
+
+/**
+ * Perform delete
+ */
+function performDelete(userId) {
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        showAlert(response.message || "User berhasil dihapus", "success");
+        closeConfirmModal();
+        closeUserDetailModal();
+        loadUsers();
+      } else {
+        showAlert("Error: " + response.error, "error");
+      }
+    })
+    .withFailureHandler(function(error) {
+      showAlert("Failed to delete user: " + error, "error");
+    })
+    .deleteUserController(userId);
+}
+
+/**
+ * Close confirm modal
+ */
+function closeConfirmModal() {
+  document.getElementById("confirmModal").style.display = "none";
+  currentActionCallback = null;
+}
+
+/**
+ * Execute confirmed action
+ */
+function executeConfirmedAction() {
+  if (currentActionCallback) {
+    currentActionCallback();
+  }
+}
+
+/**
+ * Reset user password
+ */
+function resetUserPassword() {
+  if (!confirm("Apakah Anda yakin ingin mereset password user ini? Password baru akan menjadi: password123")) {
+    return;
+  }
+
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        showAlert("Password berhasil direset ke: " + response.password, "success");
+        closeUserDetailModal();
+      } else {
+        showAlert("Error: " + response.error, "error");
+      }
+    })
+    .withFailureHandler(function(error) {
+      showAlert("Failed to reset password: " + error, "error");
+    })
+    .resetPasswordController(currentEditingUserId);
+}
+
+/**
+ * Show user activity log
+ */
+function showUserActivity() {
+  const section = document.getElementById("activitySection");
+  if (section.style.display === "none") {
+    section.style.display = "block";
+    const activityList = document.getElementById("activityList");
+    activityList.innerHTML = "<p>Loading...</p>";
+
+    google.script.run
+      .withSuccessHandler(function(response) {
+        if (response.success) {
+          const logs = response.data || [];
+          if (logs.length === 0) {
+            activityList.innerHTML = "<p>Tidak ada aktivitas</p>";
+          } else {
+            activityList.innerHTML = logs.map(log => 
+              `<div class="activity-item">${formatDate(log.timestamp)} - ${escapeHtml(log.action || "N/A")}</div>`
+            ).join("");
+          }
+        }
+      })
+      .getUserActivityLogController(currentEditingUserId, 10);
+  } else {
+    section.style.display = "none";
+  }
+}
+
+/**
+ * Handle role change
+ */
+function onRoleChange() {
+  const selectedRole = document.getElementById("roleCode").value;
+  // Can add additional logic here for role-specific fields
+}
+
+/**
+ * Utility functions
+ */
+
+function escapeHtml(text) {
+  const div = document.createElement("div");
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+function formatDate(date) {
+  if (!date) return "-";
+  const d = new Date(date);
+  return d.toLocaleDateString("id-ID") + " " + d.toLocaleTimeString("id-ID");
+}
+
+function showAlert(message, type = "info") {
+  // Create a simple alert notification
+  const alertDiv = document.createElement("div");
+  alertDiv.style.cssText = `
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 15px 20px;
+    background-color: ${type === "error" ? "#f8d7da" : type === "success" ? "#d4edda" : "#d1ecf1"};
+    color: ${type === "error" ? "#721c24" : type === "success" ? "#155724" : "#0c5460"};
+    border: 1px solid ${type === "error" ? "#f5c6cb" : type === "success" ? "#c3e6cb" : "#bee5eb"};
+    border-radius: 5px;
+    z-index: 2000;
+    max-width: 400px;
+  `;
+  alertDiv.textContent = message;
+  document.body.appendChild(alertDiv);
+  
+  setTimeout(() => {
+    alertDiv.remove();
+  }, 3000);
+}
+
+// Initialize on page load
+document.addEventListener("DOMContentLoaded", loadUserManagement);
+
+// Close modals when clicking outside
+window.onclick = function(event) {
+  const userModal = document.getElementById("userModal");
+  const detailModal = document.getElementById("userDetailModal");
+  const confirmModal = document.getElementById("confirmModal");
+
+  if (event.target === userModal) {
+    closeUserModal();
+  }
+  if (event.target === detailModal) {
+    closeUserDetailModal();
+  }
+  if (event.target === confirmModal) {
+    closeConfirmModal();
+  }
+};

@@ -4,7 +4,7 @@ class WorkflowService {
 
     const sheet =
       Repository.getSheet(
-        "81_T_WORKFLOW_HISTORY"
+        CONFIG.SHEET.WORKFLOW_HISTORY
       );
 
     sheet.appendRow([
@@ -29,7 +29,7 @@ class WorkflowService {
 
     const sheet =
       Repository.getSheet(
-        "81_T_WORKFLOW_HISTORY"
+        CONFIG.SHEET.WORKFLOW_HISTORY
       );
 
     sheet.appendRow([
@@ -53,7 +53,7 @@ class WorkflowService {
   ){
 
     const data =
-      sheetData("81_T_WORKFLOW_HISTORY");
+      sheetData(CONFIG.SHEET.WORKFLOW_HISTORY);
 
     const rowIndex =
       data.findIndex(r =>
@@ -67,26 +67,17 @@ class WorkflowService {
 
     const sheet =
       Repository.getSheet(
-        "81_T_WORKFLOW_HISTORY"
+        CONFIG.SHEET.WORKFLOW_HISTORY
       );
 
     const row = rowIndex + 2;
-
     const endTime = new Date();
 
-    sheet.getRange(row,6)
-      .setValue(endTime);
-
-    sheet.getRange(row,7)
-      .setValue(
-        (endTime -
-        new Date(
-          sheet.getRange(row,5).getValue()
-        )) / 3600000
-      );
-
-    sheet.getRange(row,9)
-      .setValue("DONE");
+    sheet.getRange(row, 6).setValue(endTime);
+    sheet.getRange(row, 7).setValue(
+      (endTime - new Date(sheet.getRange(row, 5).getValue())) / 3600000
+    );
+    sheet.getRange(row, 9).setValue("DONE");
 
   }
 
@@ -96,7 +87,7 @@ function getWorkflowConfig() {
 
   const sh =
     SpreadsheetApp.getActive()
-      .getSheetByName("07_M_WORKFLOW_STEP");
+      .getSheetByName(CONFIG.SHEET.WORKFLOW_STEP);
 
   const data = sh.getDataRange().getValues();
 
@@ -212,29 +203,19 @@ function createWorkflowHistory(
 
   const sh =
     getSheet(
-      "81_T_WORKFLOW_HISTORY"
+      CONFIG.SHEET.WORKFLOW_HISTORY
     );
 
   sh.appendRow([
-
     Utilities.getUuid(),
-
     "FPB",
-
     documentId,
-
     stepCode,
-
     new Date(),
-
     new Date(),
-
     0,
-
     user,
-
     "DONE"
-
   ]);
 
 }
