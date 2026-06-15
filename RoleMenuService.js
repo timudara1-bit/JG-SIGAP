@@ -52,6 +52,10 @@ function getRoleMenuItems(roleCode) {
       { label: "Dashboard", page: "dashboard", icon: "📊 " },
       { label: "Invoice", page: "invoice", icon: "🧾 " },
       { label: "Payment", page: "payment", icon: "💵 " }
+    ],
+    MONITORING: [
+      { label: "Dashboard", page: "dashboard", icon: "📊 " },
+      { label: "Report", page: "report", icon: "📈 " }
     ]
   };
 
@@ -129,8 +133,8 @@ function canRolePerform(roleCode, action) {
   return roleActions.includes(action);
 }
 
-function assertRoleCan(action) {
-  const session = SessionService.getSession();
+function assertRoleCan(action, token) {
+  const session = SessionService.getSession(token);
   if (!session) {
     throw new Error("Session tidak ditemukan. Silakan login ulang.");
   }
@@ -145,35 +149,59 @@ function normalizeRoleCode(rawValue) {
   if (!value) return "";
 
   const normalized = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
   switch (normalized) {
+    case "SA":
     case "SUPERADMIN":
     case "SUPER_ADMIN":
       return "SUPERADMIN";
+
+    case "ADM":
     case "ADMIN":
       return "ADMIN";
+
+    case "REQ":
     case "REQUESTER":
       return "REQUESTER";
+
+    case "GAV":
     case "GA":
     case "GAVERIFY":
     case "GA_VERIFY":
       return "GA_VERIFY";
+
     case "GAPP":
     case "GA_PP":
       return "GA_PP";
-    case "FATVERIFY":
+
     case "FAT":
+    case "FATVERIFY":
     case "FAT_VERIFY":
       return "FAT";
-    case "IAVERIFY":
+
     case "IA":
+    case "IAVERIFY":
     case "IA_VERIFY":
       return "IA";
+
+    case "PR":
+    case "SC":
     case "PROCUREMENT":
       return "PROCUREMENT";
+
+    case "RCV":
+    case "RECEIVE":
     case "WAREHOUSE":
       return "WAREHOUSE";
+
+    case "INV":
+    case "INVOICE":
     case "FINANCE":
       return "FINANCE";
+
+    case "MONITORING":
+      return "MONITORING";
+
     default:
       return value.toUpperCase();
   }

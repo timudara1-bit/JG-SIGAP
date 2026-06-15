@@ -1,4 +1,18 @@
   <script>
+
+  // Daftar seluruh menu yang ada di dalam aplikasi JG-SIGAP
+  const APP_MENU_REGISTRY = [
+    { id: "dashboard", label: "Dashboard", icon: "fa-dashboard" },
+    { id: "fpb", label: "Pengajuan FPB", icon: "fa-file-text" },
+    { id: "sla", label: "SLA Monitor", icon: "fa-clock-o" },
+    { 
+      id: "settings", 
+      label: "Settings System", 
+      icon: "fa-cogs", 
+      onlyAdmin: true // Penanda khusus hanya untuk SUPERADMIN
+    }
+  ];
+
   function toggleMenu(menuId) {
 
     document.querySelectorAll('.submenu').forEach(menu => {
@@ -37,6 +51,101 @@
       .toggle("show");
 
   }
+
+  function initAppLayout(user) {
+  // 1. Ambil data session dari localStorage atau parameter user
+  const currentRole = localStorage.getItem("JG_SIGAP_ROLE") || "MONITORING";
+  const userId = (user && user.userId) || "User";
+  const userEmail = (user && user.email) || "";
+  const userPhoto = (user && user.photoUrl) || `https://ui-avatars.com/api/?name=${userId}&background=random`;
+
+  // ==========================================
+  // SUNTIK DATA USER KE NAVBAR (Layout_Navbar)
+  // ==========================================
+  const userNameEl = document.getElementById("userName");
+  if (userNameEl) userNameEl.innerText = `${userId} (${currentRole})`;
+
+  const userEmailEl = document.getElementById("userEmail");
+  if (userEmailEl) userEmailEl.innerText = userEmail;
+
+  const userPhotoEl = document.getElementById("userPhoto");
+  if (userPhotoEl) userPhotoEl.src = userPhoto;
+
+
+  // ==========================================
+  // BUILD MENU DINAMIS KE SIDEBAR (Layout_Sidebar)
+  // ==========================================
+  const sidebarMenuContainer = document.getElementById("sidebarMenu");
+  if (sidebarMenuContainer) {
+    let menuHtml = "";
+
+    // APP_MENU_REGISTRY berasal dari JS_core.js / JS_app.js Anda
+    if (typeof APP_MENU_REGISTRY !== 'undefined') {
+      APP_MENU_REGISTRY.forEach(menu => {
+        // Proteksi Role: Sembunyikan menu settings jika bukan SUPERADMIN
+        if (menu.onlyAdmin && currentRole !== "SUPERADMIN") {
+          return; 
+        }
+
+        menuHtml += `
+          <li>
+            <a href="#" id="menu-${menu.id}" onclick="AppCore.navigate('${menu.id}')">
+              <i class="fa ${menu.icon}"></i> <span>${menu.label}</span>
+            </a>
+          </li>
+        `;
+      });
+      
+      // Suntikkan list menu murni ke dalam <ul> bawaan Layout_Sidebar
+      sidebarMenuContainer.innerHTML = menuHtml;
+    }
+
+    // Beri kelas active pada menu yang aktif saat ini
+    const initial = window.INITIAL_DATA || {};
+    const currentPage = (initial.page || "dashboard").toLowerCase();
+    const activeEl = document.getElementById(`menu-${currentPage}`);
+    if (activeEl) activeEl.classList.add("active");
+  }
+}
+
+// ==========================================
+// FUNGSI INTERAKSI NAVBAR DROPDOWN & LOGOUT
+// ==========================================
+window.toggleProfileMenu = function() {
+  const dropdown = document.getElementById("profileDropdown");
+  if (dropdown) dropdown.classList.toggle("show");
+};
+
+// Menutup dropdown jika user mengklik di luar area profil
+window.addEventListener("click", function(event) {
+  if (!event.target.matches('.user-photo')) {
+    const dropdown = document.getElementById("profileDropdown");
+    if (dropdown && dropdown.classList.contains('show')) {
+      dropdown.classList.remove('show');
+    }
+  }
+});
+
+window.logout = function() {
+  if (confirm("Apakah Anda yakin ingin keluar dari sistem JG-SIGAP?")) {
+    localStorage.clear();
+    window.location.href = AppCore.getBaseUrl() + "?page=login";
+  }
+};
+
+// Hubungkan fungsi navigasi shortcut dari dropdown navbar jika diperlukan
+window.openProfile = function() { AppCore.navigate('profile'); };
+window.openSetting = function() { AppCore.navigate('settings'); };
+
+
+
+// Fungsi logout global pembongkar session
+window.handleLogoutAction = function() {
+  if (confirm("Apakah Anda yakin ingin keluar dari JG-SIGAP?")) {
+    localStorage.clear();
+    window.location.href = AppCore.getBaseUrl() + "?page=login";
+  }
+};
 
 
 </script>

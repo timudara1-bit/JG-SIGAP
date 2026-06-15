@@ -1,0 +1,168 @@
+<script>
+/**
+ * =====================================================
+ * JG-SIGAP FRONTEND CORE V5
+ * Satu helper global untuk config, token, session, dan navigasi.
+ * =====================================================
+ */
+window.AppCore = window.AppCore || {};
+
+AppCore.config = Object.assign({
+  name: "JG-SIGAP",
+  appUrl: "",
+  defaultPage: "dashboard",
+  loginPage: "login",
+  tokenKey: "JG_SIGAP_TOKEN",
+  userKey: "JG_SIGAP_USER",
+  roleKey: "JG_SIGAP_ROLE",
+  rolesKey: "JG_SIGAP_ROLES"
+}, window.APP_CONFIG || {});
+
+AppCore.initialData = window.APP_INITIAL_DATA || window.INITIAL_DATA || {};
+
+AppCore.getBaseUrl = function() {
+  if (AppCore.config && AppCore.config.appUrl) {
+    return AppCore.config.appUrl;
+  }
+
+  const url = window.location.href.split("?")[0];
+
+  if (url.includes("/dev")) {
+    return url.substring(0, url.indexOf("/dev") + 4);
+  }
+
+  if (url.includes("/exec")) {
+    return url.substring(0, url.indexOf("/exec") + 5);
+  }
+
+  return url;
+};
+
+AppCore.getToken = function() {
+  return localStorage.getItem(AppCore.config.tokenKey) || "";
+};
+
+AppCore.setToken = function(token) {
+  if (token) {
+    localStorage.setItem(AppCore.config.tokenKey, token);
+  }
+};
+
+AppCore.bootstrapTokenFromUrl = function() {
+  const token = AppCore.initialData && AppCore.initialData.token
+    ? String(AppCore.initialData.token || "")
+    : "";
+
+  if (token) {
+    AppCore.setToken(token);
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const urlToken = params.get("token") || "";
+
+  // PERBAIKAN: Hanya setToken JIKA urlToken benar-benar ada isinya!
+  if (urlToken && urlToken.trim() !== "") {
+    AppCore.setToken(urlToken);
+  }
+};
+
+AppCore.clearSession = function() {
+  localStorage.removeItem(AppCore.config.tokenKey);
+  localStorage.removeItem(AppCore.config.userKey);
+  localStorage.removeItem(AppCore.config.roleKey);
+  localStorage.removeItem(AppCore.config.rolesKey);
+  localStorage.removeItem("JG_SIGAP_EXPIRY"); // Hapus juga info expired
+};
+
+AppCore.saveSession = function(res) {
+  if (!res) return;
+
+  if (res.token) {
+    localStorage.setItem(AppCore.config.tokenKey, res.token);
+    
+    // 🔥 TAMBAHAN: Set Sesi Expired (8 Jam = 8 * 60 * 60 * 1000 milidetik)
+    const expiryTime = Date.now() + (8 * 60 * 60 * 1000);
+    localStorage.setItem("JG_SIGAP_EXPIRY", expiryTime.toString());
+  }
+
+  localStorage.setItem(AppCore.config.userKey, JSON.stringify(res.user || {}));
+  localStorage.setItem(AppCore.config.roleKey, res.role || res.role_code || "");
+  localStorage.setItem(AppCore.config.rolesKey, JSON.stringify(res.roles || []));
+};
+
+AppCore.setSessionContext = function(session) {
+  localStorage.setItem(AppCore.config.userKey, JSON.stringify(session || {}));
+  localStorage.setItem(AppCore.config.roleKey, (session && (session.role || session.role_code)) || "");
+  localStorage.setItem(AppCore.config.rolesKey, JSON.stringify((session && session.roles) || []));
+};
+
+AppCore.navigate = function(page) {
+  const target = page || AppCore.config.defaultPage || "dashboard";
+
+  // 1. Ubah URL browser secara senyap (tanpa hard reload)
+  if (window.history && window.history.pushState) {
+    const newUrl = AppCore.getBaseUrl() + "?page=" + encodeURIComponent(target);
+    window.history.pushState({ page: target }, '', newUrl);
+  }
+
+  // 2. Picu SPA Loader Anda untuk mengganti tampilan di elemen #content
+  // Kita cari fungsi routing yang biasanya ada di JS_app.js atau JS_loader.js Anda
+  if (typeof loadPage === "function") {
+    loadPage(target);
+  } else if (typeof renderPage === "function") {
+    renderPage(target);
+  } else if (typeof route === "function") {
+    route(target);
+  } else if (window.App && typeof window.App.loadPage === "function") {
+    window.App.loadPage(target);
+  } else {
+    // Fallback terakhir jika fungsi render di atas tidak ditemukan (supaya tidak stuck)
+    console.warn("Fungsi render SPA tidak ditemukan. Melakukan fallback hard-reload.");
+    window.location.href = AppCore.getBaseUrl() + "?page=" + encodeURIComponent(target) + "&t=" + Date.now();
+  }
+};
+
+
+AppCore.redirect = AppCore.navigate;
+
+AppCore.redirectWithToken = function(page, token) {
+  if (token) {
+    AppCore.setToken(token);
+  }
+
+  AppCore.navigate(page || AppCore.config.defaultPage || "dashboard");
+};
+
+AppCore.redirectLogin = function() {
+  AppCore.navigate(AppCore.config.loginPage || "login");
+};
+
+AppCore.redirectDashboard = function() {
+  AppCore.navigate(AppCore.config.defaultPage || "dashboard");
+};
+
+// Compatibility helpers untuk kode lama
+function getSessionToken() {
+  return AppCore.getToken();
+}
+
+function getSessionUser() {
+  try {
+    return JSON.parse(localStorage.getItem(AppCore.config.userKey) || "{}");
+  } catch (err) {
+    return {};
+  }
+}
+
+function getBaseAppUrl() {
+  return AppCore.getBaseUrl();
+}
+
+function redirectLogin() {
+  AppCore.redirectLogin();
+}
+
+function clearClientSession() {
+  AppCore.clearSession();
+}
+</script>

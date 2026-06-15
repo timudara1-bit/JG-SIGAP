@@ -1,86 +1,161 @@
 /**
  * =====================================================
- * AUTH SERVICE V2
- * - Register hanya boleh jika employee ada di 04_M_EMPLOYEE
- * - Support database V2 dan sebagian field lama agar migrasi aman
+ * AUTH SERVICE V2.1 - TOKEN SESSION FIX
+ * - Login returns success:true + token + user + role + redirectPage
+ * - Role ROLE001 -> 02_M_ROLE.role_code -> internal CONFIG.ROLE
+ * - Compatible with 04_M_EMPLOYEE, 01_M_USER, 05_M_USER_ROLE
  * =====================================================
  */
 class AuthService {
 
-  static login(emailOrUsername, password) {
-
+  static login(emailOrUsername, password, deviceInfo) {
     const loginKey = String(emailOrUsername || "").trim();
 
     if (!loginKey || !password) {
-      throw new Error("Email/username dan password wajib diisi");
+      return {
+        success: false,
+        message: "Email/username dan password wajib diisi"
+      };
     }
 
-    const employees = Repository.getAll(CONFIG.SHEET.EMPLOYEE);
-    const users = Repository.getAll(CONFIG.SHEET.USER);
+    try {
+      const employees = Repository.getAll(CONFIG.SHEET.EMPLOYEE);
+      const users = Repository.getAll(CONFIG.SHEET.USER);
 
-    const employee = employees.find(e =>
-      same(e.email, loginKey) ||
-      same(e.username, loginKey) ||
-      same(e.nik, loginKey) ||
-      same(e.employee_no, loginKey)
-    );
+      let employee = employees.find(e =>
+        same(e.email, loginKey) ||
+        same(e.username, loginKey) ||
+        same(e.nik, loginKey) ||
+        same(e.employee_no, loginKey)
+      );
 
-    if (!employee) {
-      throw new Error("Data karyawan tidak ditemukan pada 04_M_EMPLOYEE");
-    }
+      let user = null;
 
-    const user = users.find(u =>
-      same(u.employee_id, employee.employee_id) ||
-      same(u.nik, employee.nik) ||
-      same(u.email, employee.email) ||
-      same(u.username, loginKey)
-    );
+      if (employee) {
+        user = users.find(u =>
+          same(u.employee_id, employee.employee_id) ||
+          same(u.nik, employee.nik) ||
+          same(u.email, employee.email) ||
+          same(u.username, loginKey)
+        );
+      }
 
-    if (!user) {
-      throw new Error("Akun belum dibuat");
-    }
+      if (!user) {
+        user = users.find(u =>
+          same(u.username, loginKey) ||
+          same(u.email, loginKey) ||
+          same(u.nik, loginKey)
+        );
+      }
 
-    if (!isActiveValue(user.is_active !== undefined ? user.is_active : user.aktif)) {
-      throw new Error("User tidak aktif");
-    }
+      if (!user) {
+        return {
+          success: false,
+          message: "Akun belum dibuat"
+        };
+      }
 
-    const attempt = Number(user.login_attempt || 0);
-    if (attempt >= 5) {
-      throw new Error("Akun terkunci. Hubungi administrator.");
-    }
+      if (!employee) {
+        employee = employees.find(e =>
+          same(e.employee_id, user.employee_id) ||
+          same(e.nik, user.nik) ||
+          same(e.email, user.email)
+        );
+      }
 
-    const valid = SecurityService.verifyPassword(
-      password,
-      user.salt || "",
-      user.password_hash || ""
-    );
+      if (!employee) {
+        return {
+          success: false,
+          message: "Data karyawan tidak ditemukan pada 04_M_EMPLOYEE"
+        };
+      }
 
-    if (!valid) {
+      if (!isActiveValue(user.is_active !== undefined ? user.is_active : user.aktif)) {
+        return {
+          success: false,
+          message: "User tidak aktif"
+        };
+      }
+
+      const attempt = Number(user.login_attempt || 0);
+      if (attempt >= 5) {
+        return {
+          success: false,
+          message: "Akun terkunci. Hubungi administrator."
+        };
+      }
+
+      const valid = SecurityService.verifyPassword(
+        password,
+        user.salt || "",
+        user.password_hash || ""
+      );
+
+      if (!valid) {
+        Repository.update(CONFIG.SHEET.USER, user.user_id, {
+          login_attempt: attempt + 1
+        });
+        return {
+          success: false,
+          message: "Password salah"
+        };
+      }
+
+      const roles = AuthService.getUserRoles(user.user_id);
+      const primaryRole = AuthService.getPrimaryRole(roles);
+      const redirectPage = AuthService.getRedirectPage(primaryRole);
+
+      const sessionUser = buildSessionUser(
+        user,
+        employee,
+        roles,
+        primaryRole,
+        redirectPage
+      );
+
+      const session = SessionService.create(
+        sessionUser,
+        deviceInfo || "WEB_BROWSER"
+      );
+
       Repository.update(CONFIG.SHEET.USER, user.user_id, {
-        login_attempt: attempt + 1
+        login_attempt: 0,
+        last_login: new Date()
       });
-      throw new Error("Password salah");
+
+      try {
+        AuditService.write("AUTH", user.user_id, "LOGIN", user.user_id, "User login");
+      } catch (auditErr) {
+        Logger.log("AUDIT LOGIN ERROR = " + auditErr.message);
+      }
+
+      Logger.log("LOGIN SUCCESS USER = " + user.user_id);
+      Logger.log("LOGIN SUCCESS ROLE = " + primaryRole);
+      Logger.log("LOGIN SUCCESS REDIRECT = " + redirectPage);
+      Logger.log("LOGIN SUCCESS TOKEN = " + session.token);
+
+      return {
+        success: true,
+        message: "Login berhasil",
+        token: session.token,
+        user: session.user || sessionUser,
+        role: primaryRole,
+        role_code: primaryRole,
+        roles: roles,
+        redirectPage: redirectPage || "dashboard",
+        expired_at: String(session.expired_at || "")
+      };
+
+    } catch (err) {
+      Logger.log("LOGIN ERROR = " + err.message);
+      return {
+        success: false,
+        message: err.message || "Login gagal"
+      };
     }
-
-    Repository.update(CONFIG.SHEET.USER, user.user_id, {
-      login_attempt: 0,
-      last_login: new Date()
-    });
-    const roleCode = getUserRoleCode(user) || user.role_code || CONFIG.ROLE.REQUESTER;
-    const sessionUser = buildSessionUser(user, employee, roleCode);
-    SessionService.create(sessionUser);
-
-    AuditService.write("AUTH", user.user_id, "LOGIN", user.user_id, "User login");
-
-    return {
-      success: true,
-      message: "Login berhasil",
-      user: sessionUser
-    };
   }
 
   static register(data) {
-
     const nik = String(data.nik || "").trim();
 
     if (!nik) {
@@ -128,7 +203,7 @@ class AuthService {
       login_attempt: 0,
       department_id: employee.department_id,
       dept_code: employee.department_id || employee.dept_code,
-      jabatan: employee.position || employee.jabatan,
+      jabatan: employee.position || employee.position_id || employee.jabatan,
       role_code: CONFIG.ROLE.REQUESTER,
       approver_level: 0,
       is_active: true,
@@ -145,7 +220,6 @@ class AuthService {
   }
 
   static changePassword(emailOrUsername, oldPassword, newPassword) {
-
     const loginKey = String(emailOrUsername || "").trim();
     const users = Repository.getAll(CONFIG.SHEET.USER);
     const user = users.find(u =>
@@ -191,14 +265,89 @@ class AuthService {
     };
   }
 
-  static logout() {
-    const session = SessionService.getSession();
+  static logout(token) {
+    const session = SessionService.getSession(token);
+
     if (session) {
-      AuditService.write("AUTH", session.user_id, "LOGOUT", session.user_id, "User logout");
-      SessionService.destroy();
+      try {
+        AuditService.write("AUTH", session.user_id, "LOGOUT", session.user_id, "User logout");
+      } catch (auditErr) {
+        Logger.log("AUDIT LOGOUT ERROR = " + auditErr.message);
+      }
     }
 
-    return true;
+    SessionService.logout(token);
+
+    return {
+      success: true,
+      message: "Logout berhasil"
+    };
+  }
+
+  static getUserRoles(userId) {
+    const userRoles = Repository.getAll(CONFIG.SHEET.USER_ROLE);
+    const roles = Repository.getAll(CONFIG.SHEET.ROLE);
+
+    const result = userRoles
+      .filter(r =>
+        same(r.user_id, userId) &&
+        isActiveValue(r.is_active)
+      )
+      .map(ur => {
+        const roleIdOrCode = String(ur.role_id || ur.role_code || "").trim();
+        const role = roles.find(x =>
+          same(x.role_id, roleIdOrCode) ||
+          same(x.role_code, roleIdOrCode)
+        );
+        const rawCode = role ? String(role.role_code || role.role_id || "").trim() : roleIdOrCode;
+        return normalizeDatabaseRoleCode(rawCode);
+      })
+      .filter(Boolean);
+
+    return result.length ? uniqueArray(result) : [CONFIG.ROLE.REQUESTER];
+  }
+
+  static getPrimaryRole(roles) {
+    const normalizedRoles = (roles || []).map(r => normalizeDatabaseRoleCode(r));
+
+    const priority = [
+      CONFIG.ROLE.SUPERADMIN,
+      CONFIG.ROLE.ADMIN,
+      CONFIG.ROLE.GA_VERIFY,
+      CONFIG.ROLE.GA_PP,
+      CONFIG.ROLE.FAT,
+      CONFIG.ROLE.IA,
+      CONFIG.ROLE.PROCUREMENT,
+      CONFIG.ROLE.WAREHOUSE,
+      CONFIG.ROLE.FINANCE,
+      CONFIG.ROLE.MONITORING,
+      CONFIG.ROLE.REQUESTER
+    ];
+
+    for (const role of priority) {
+      if (normalizedRoles.includes(role)) return role;
+    }
+
+    return normalizedRoles[0] || CONFIG.ROLE.REQUESTER;
+  }
+
+  static getRedirectPage(role) {
+    const normalized = normalizeDatabaseRoleCode(role);
+
+    const map = {};
+    map[CONFIG.ROLE.SUPERADMIN] = "dashboard";
+    map[CONFIG.ROLE.ADMIN] = "dashboard";
+    map[CONFIG.ROLE.REQUESTER] = "dashboard";
+    map[CONFIG.ROLE.GA_VERIFY] = "dashboard";
+    map[CONFIG.ROLE.GA_PP] = "dashboard";
+    map[CONFIG.ROLE.FAT] = "dashboard";
+    map[CONFIG.ROLE.IA] = "dashboard";
+    map[CONFIG.ROLE.PROCUREMENT] = "dashboard";
+    map[CONFIG.ROLE.WAREHOUSE] = "dashboard";
+    map[CONFIG.ROLE.FINANCE] = "dashboard";
+    map[CONFIG.ROLE.MONITORING] = "dashboard";
+
+    return map[normalized] || "dashboard";
   }
 }
 
@@ -212,130 +361,70 @@ function isActiveValue(value) {
   return ["TRUE", "1", "YA", "Y", "AKTIF", "ACTIVE"].includes(v);
 }
 
-function buildSessionUser(user, employee, roleCode) {
+function uniqueArray(arr) {
+  const seen = {};
+  return (arr || []).filter(item => {
+    if (!item || seen[item]) return false;
+    seen[item] = true;
+    return true;
+  });
+}
+
+function normalizeDatabaseRoleCode(rawCode) {
+  const upper = String(rawCode || "").trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+  const map = {
+    SA: CONFIG.ROLE.SUPERADMIN,
+    SUPERADMIN: CONFIG.ROLE.SUPERADMIN,
+    SUPER_ADMIN: CONFIG.ROLE.SUPERADMIN,
+    ADM: CONFIG.ROLE.ADMIN,
+    ADMIN: CONFIG.ROLE.ADMIN,
+    REQ: CONFIG.ROLE.REQUESTER,
+    REQUESTER: CONFIG.ROLE.REQUESTER,
+    GAV: CONFIG.ROLE.GA_VERIFY,
+    GA: CONFIG.ROLE.GA_VERIFY,
+    GAVERIFY: CONFIG.ROLE.GA_VERIFY,
+    GA_VERIFY: CONFIG.ROLE.GA_VERIFY,
+    GAPP: CONFIG.ROLE.GA_PP,
+    GA_PP: CONFIG.ROLE.GA_PP,
+    FAT: CONFIG.ROLE.FAT,
+    FATVERIFY: CONFIG.ROLE.FAT,
+    FAT_VERIFY: CONFIG.ROLE.FAT,
+    IA: CONFIG.ROLE.IA,
+    IAVERIFY: CONFIG.ROLE.IA,
+    IA_VERIFY: CONFIG.ROLE.IA,
+    PR: CONFIG.ROLE.PROCUREMENT,
+    SC: CONFIG.ROLE.PROCUREMENT,
+    PROCUREMENT: CONFIG.ROLE.PROCUREMENT,
+    RCV: CONFIG.ROLE.WAREHOUSE,
+    RECEIVE: CONFIG.ROLE.WAREHOUSE,
+    WAREHOUSE: CONFIG.ROLE.WAREHOUSE,
+    INV: CONFIG.ROLE.FINANCE,
+    INVOICE: CONFIG.ROLE.FINANCE,
+    FINANCE: CONFIG.ROLE.FINANCE,
+    MONITORING: CONFIG.ROLE.MONITORING
+  };
+
+  return map[upper] || String(rawCode || "").trim().toUpperCase();
+}
+
+function buildSessionUser(user, employee, roles, primaryRole, redirectPage) {
   return {
-    ...user,
+    user_id: user.user_id,
     employee_id: employee.employee_id || user.employee_id,
     nik: employee.nik || user.nik,
     nama: employee.full_name || employee.nama || user.nama,
     full_name: employee.full_name || employee.nama || user.nama,
-    email: employee.email || user.email,
+    email: employee.email || user.email || user.username,
+    username: user.username || employee.email || employee.nik,
     department_id: employee.department_id || user.department_id || user.dept_code,
     dept_code: employee.department_id || user.dept_code,
-    jabatan: employee.position || user.jabatan,
-    position: employee.position || user.jabatan,
-    role_code: roleCode || user.role_code || CONFIG.ROLE.REQUESTER
+    position_id: employee.position_id || employee.position || user.position_id || user.jabatan,
+    jabatan: employee.position || employee.position_id || user.jabatan,
+    role: primaryRole,
+    role_code: primaryRole,
+    roles: roles || [],
+    redirectPage: redirectPage || "dashboard"
   };
 }
 
-function getUserRoleCode(user) {
-  if (!user || !user.user_id) return null;
-
-  const userRole = Repository.findOne(
-    CONFIG.SHEET.USER_ROLE,
-    "user_id",
-    user.user_id
-  );
-
-  if (!userRole) return null;
-
-  // userRole may store a reference to role_id (e.g. ROLE001) or directly a role_code.
-  let candidate = String(userRole.role_id || userRole.role_code || userRole.role || "").trim();
-
-  // If candidate looks like a role_id (starts with ROLE), try to resolve to role entry
-  let roleEntry = null;
-  if (/^ROLE/i.test(candidate)) {
-    roleEntry = Repository.findOne(CONFIG.SHEET.ROLE, "role_id", candidate);
-  }
-
-  // If not found yet, try lookup by role_code as well
-  if (!roleEntry) {
-    roleEntry = Repository.findOne(CONFIG.SHEET.ROLE, "role_code", candidate) || roleEntry;
-  }
-
-  const rawCode = roleEntry ? String(roleEntry.role_code || roleEntry.role_id || "").trim() : candidate;
-
-  // Map database role codes to internal CONFIG.ROLE values where they differ
-  const map = {
-    "SUPER_ADMIN": CONFIG.ROLE.SUPERADMIN,
-    "SUPERADMIN": CONFIG.ROLE.SUPERADMIN,
-    "FAT_VERIFY": CONFIG.ROLE.FAT,
-    "FAT": CONFIG.ROLE.FAT,
-    "IA_VERIFY": CONFIG.ROLE.IA,
-    "IA": CONFIG.ROLE.IA,
-    "GA": CONFIG.ROLE.GA_VERIFY,
-    "GA_VERIFY": CONFIG.ROLE.GA_VERIFY,
-    "REQUESTER": CONFIG.ROLE.REQUESTER,
-    "ADMIN": CONFIG.ROLE.ADMIN,
-    "PROCUREMENT": CONFIG.ROLE.PROCUREMENT,
-    "WAREHOUSE": CONFIG.ROLE.WAREHOUSE,
-    "FINANCE": CONFIG.ROLE.FINANCE
-  };
-
-  const upper = String(rawCode || "").trim().toUpperCase();
-  if (map[upper]) return map[upper];
-
-  // Fallback: try collapsing non-alphanumeric and compare to CONFIG values
-  const collapsed = upper.replace(/[^A-Z0-9]/g, "");
-  for (const k in CONFIG.ROLE) {
-    if (String(CONFIG.ROLE[k]).toUpperCase() === upper || String(CONFIG.ROLE[k]).toUpperCase() === collapsed) {
-      return CONFIG.ROLE[k];
-    }
-  }
-
-  return rawCode || null;
-}
-
-/**
- * =====================================================
- * WEBAPP FUNCTIONS
- * =====================================================
- */
-function loginUser(email, password) {
-  return AuthService.login(email, password);
-}
-
-function logoutUser() {
-  return AuthService.logout();
-}
-
-function registerUser(data) {
-  return AuthService.register(data);
-}
-
-function changePassword(email, oldPassword, newPassword) {
-  return AuthService.changePassword(email, oldPassword, newPassword);
-}
-
-function unlockUser(userId) {
-  return AuthService.unlockUser(userId);
-}
-
-/**
- * Jalankan manual dari Apps Script Editor jika perlu reset password testing.
- */
-function resetUserPasswordFast(emailOrUsername, newPassword) {
-  const users = Repository.getAll(CONFIG.SHEET.USER);
-  const user = users.find(u =>
-    same(u.email, emailOrUsername) ||
-    same(u.username, emailOrUsername) ||
-    same(u.nik, emailOrUsername)
-  );
-
-  if (!user) {
-    throw new Error("User tidak ditemukan: " + emailOrUsername);
-  }
-
-  const salt = SecurityService.generateSalt();
-  const hash = SecurityService.hashPassword(newPassword, salt);
-
-  Repository.update(CONFIG.SHEET.USER, user.user_id, {
-    password_hash: hash,
-    salt: salt,
-    login_attempt: 0,
-    is_active: true,
-    aktif: true
-  });
-
-  return "Password berhasil direset untuk " + emailOrUsername;
-}

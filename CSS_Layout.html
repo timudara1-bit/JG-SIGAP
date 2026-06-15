@@ -1,0 +1,37 @@
+<style>
+  /* Reset Dasar Browser dari CSS Lama */
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    font-family: Arial, sans-serif;
+    background-color: #f5f5f5;
+    overflow: hidden; /* Mengunci scroll utama agar tidak double scroll */
+  }
+
+  /* Struktur Container Utama Enterprise */
+  #app-container {
+    display: flex;
+    flex-direction: column;
+    width: 100vw;
+    height: 100vh;
+  }
+
+  /* Pengganti .main-layout lama yang menampung Sidebar + Content */
+  #main-layout {
+    display: flex;
+    flex: 1;
+    width: 100%;
+    overflow: hidden;
+  }
+
+  /* Area Content Baru (Bebas dari jebakan position:fixed) */
+  #content {
+    flex: 1;
+    padding: 20px;
+    background-color: #f5f7fa;
+    overflow-y: auto; /* Scroll hanya aktif di dalam area konten kerja */
+    box-sizing: border-box;
+  }
+</style>

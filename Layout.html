@@ -1,17 +1,19 @@
-<div class="sidebar">
+<div id="app-container" class="layout">
+  
+  <div id="navbar-container" class="navbar-container">
+    <?!= include('Layout_Navbar'); ?>
+  </div>
 
-  <ul>
+  <div id="main-layout" class="main-layout">
+    <div id="sidebar-container" class="sidebar-container">
+      <?!= include('Layout_Sidebar'); ?>
+    </div>
+    
+    <div id="content" class="content"></div>
+  </div>
 
-    <li>Dashboard</li>
-
-    <li>FPB</li>
-
-    <li>PP</li>
-
-    <li>PR</li>
-
-    <li>PO</li>
-
-  </ul>
-
+  <div id="footer-container" calass="footer-container">
+    <?!= include('Layout_Footer'); ?>
+  </div>
+  
 </div>

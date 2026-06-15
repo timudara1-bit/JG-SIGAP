@@ -1,62 +1,37 @@
-function doGet(e){
+/**
+ * =====================================================
+ * ROUTER V5
+ * Semua request dirender lewat satu shell: Index.html.
+ * Page login/register/dashboard dimuat oleh SPA loader.
+ * =====================================================
+ */
+function doGet(e) {
+  const page = e && e.parameter && e.parameter.page
+    ? String(e.parameter.page).trim().toLowerCase()
+    : CONFIG.APP.LOGIN_PAGE;
 
-  const page =
-    e.parameter.page || "login";
+  const token = e && e.parameter && e.parameter.token
+    ? String(e.parameter.token).trim()
+    : "";
 
-  const session =
-    SessionService.getSession();
+  const template = HtmlService.createTemplateFromFile("Index");
 
-  if(!session){
+  template.initialData = JSON.stringify({
+    page: page,
+    token: token
+  });
 
-    return HtmlService
-      .createTemplateFromFile("Page_Login")
-      .evaluate()
-      .setTitle("JG-SIGAP");
+  template.appConfig = JSON.stringify(getAppConfig());
 
-  }
-
-  // Ganti bagian switch(page) di Router.gs Anda dengan ini:
-
-  switch (page) {
-    case "dashboard":
-      var template = HtmlService.createTemplateFromFile("Index");
-      
-      // Ambil data riil dari spreadsheet dan masukkan ke template
-      try {
-        var liveSlaData = getSLADashboardData() || {};
-        template.initialData = JSON.stringify(liveSlaData);
-      } catch(err) {
-        Logger.log("Gagal mengambil data SLA: " + err.message);
-        template.initialData = JSON.stringify({}); // Fallback jika error
-      }
-      
-      return template.evaluate()
-        .setTitle("JG-SIGAP")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-
-    default:
-      var template = HtmlService.createTemplateFromFile("Index");
-      
-      // Lakukan hal yang sama untuk default route jika mengarah ke dashboard
-      try {
-        var liveSlaData = getSLADashboardData() || {};
-        template.initialData = JSON.stringify(liveSlaData);
-      } catch(err) {
-        template.initialData = JSON.stringify({});
-      }
-      
-      return template.evaluate()
-        .setTitle("JG-SIGAP")
-        .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-  }
-
+  return template
+    .evaluate()
+    .addMetaTag("viewport", "width=device-width, initial-scale=1")
+    .setTitle(CONFIG.APP.NAME)
+    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
 }
 
-function include(filename){
-
+function include(filename) {
   return HtmlService
     .createHtmlOutputFromFile(filename)
     .getContent();
-
 }
-

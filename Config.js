@@ -1,12 +1,26 @@
 /**
  * =====================================================
- * CONFIG JG-SIGAP V2
- * Database mengikuti JG-SIGAP_DATABASE_BLUEPRINT_V2
+ * JG-SIGAP CONFIG V5
+ * Centralized app, database, and role configuration.
  * =====================================================
  */
 const CONFIG = {
 
-  APP_NAME: "JG-SIGAP",
+  APP: {
+    NAME: "JG-SIGAP",
+
+    DEV_URL:
+      "https://script.google.com/macros/s/AKfycbwjQmDqckJvpbZHf6JUd_9MibJ5OM71F_571h92mz8/dev",
+
+    EXEC_URL:
+      "https://script.google.com/macros/s/AKfycbxsqk2okOPyREabWs0GstRlNWZd1rIm8j9JPSP8_Z93vVFGc0zEWdUzCj-tVySgQVgG/exec",
+
+    // true = /dev, false = /exec
+    USE_DEV: true,
+
+    DEFAULT_PAGE: "dashboard",
+    LOGIN_PAGE: "login"
+  },
 
   SHEET: {
     CONFIG: "00_M_CONFIG",
@@ -15,7 +29,6 @@ const CONFIG = {
     ROLE: "02_M_ROLE",
     DEPARTMENT: "03_M_DEPARTMENT",
     EMPLOYEE: "04_M_EMPLOYEE",
-    KARYAWAN: "04_M_EMPLOYEE", // alias agar kode lama tidak error
     USER_ROLE: "05_M_USER_ROLE",
 
     APPROVAL_MATRIX: "06_M_APPROVAL_MATRIX",
@@ -36,12 +49,16 @@ const CONFIG = {
 
     PR_HEADER: "30_T_PR_HEADER",
     PR_DETAIL: "31_T_PR_DETAIL",
+
     PO_HEADER: "40_T_PO_HEADER",
     PO_DETAIL: "41_T_PO_DETAIL",
+
     RECEIVE_HEADER: "50_T_RECEIVE_HEADER",
     RECEIVE_DETAIL: "51_T_RECEIVE_DETAIL",
+
     INVOICE_HEADER: "60_T_INVOICE_HEADER",
     INVOICE_DETAIL: "61_T_INVOICE_DETAIL",
+
     PAYMENT_HEADER: "70_T_PAYMENT_HEADER",
     PAYMENT_DETAIL: "71_T_PAYMENT_DETAIL",
 
@@ -58,87 +75,48 @@ const CONFIG = {
     USER_SESSION: "94_T_USER_SESSION",
 
     DASHBOARD: "95_R_DASHBOARD",
-    SLA_REPORT: "96_R_SLA",
+    R_SLA: "96_R_SLA",
     BOTTLENECK: "97_R_BOTTLENECK",
-    WORKFLOW_REPORT: "98_R_WORKFLOW",
+    R_WORKFLOW: "98_R_WORKFLOW",
 
     LOADER_CONFIG: "96_M_LOADER_CONFIG",
     LOADER_TEMPLATE: "97_M_LOADER_TEMPLATE",
+
     SYSTEM_LOG: "99_SYSTEM_LOG"
   },
-
-  SESSION_TIMEOUT: 8,
 
   ROLE: {
     SUPERADMIN: "SUPERADMIN",
     ADMIN: "ADMIN",
     REQUESTER: "REQUESTER",
     GA_VERIFY: "GA_VERIFY",
-    GA_PP: "GA_PP",
     FAT: "FAT",
     IA: "IA",
     PROCUREMENT: "PROCUREMENT",
     WAREHOUSE: "WAREHOUSE",
     FINANCE: "FINANCE",
-    GA_PR: "GA_PR",
-    GA_RECEIVE: "GA_RECEIVE",
-    GA_INVOICE: "GA_INVOICE",
-    PAYMENT: "PAYMENT",
-    USER_APPROVE_L1: "USER-APPROVE-L1",
-    USER_APPROVE_L2: "USER-APPROVE-L2",
-    GA_APPROVE_L1: "GA-APPROVE-L1",
-    GA_APPROVE_L2: "GA-APPROVE-L2",
-    USER: "USER"
+    MONITORING: "MONITORING"
   }
-
 };
 
 function getAppUrl() {
-  return ScriptApp.getService().getUrl();
+  return CONFIG.APP.USE_DEV
+    ? CONFIG.APP.DEV_URL
+    : CONFIG.APP.EXEC_URL;
 }
 
-function getSheet(name) {
-  const sheetName = resolveSheetName(name);
-  return SpreadsheetApp.getActive().getSheetByName(sheetName);
-}
-
-function getSheetData(name) {
-  const sheetName = resolveSheetName(name);
-  const sh = getSheet(sheetName);
-  if (!sh) {
-    throw new Error("Sheet tidak ditemukan : " + sheetName);
-  }
-  return sh.getDataRange().getValues();
-}
-
-function resolveSheetName(name) {
-  const alias = {
-    "00_CONFIG": CONFIG.SHEET.CONFIG,
-    "MST_KARYAWAN": CONFIG.SHEET.EMPLOYEE,
-    "TPL_KARYAWAN": CONFIG.SHEET.LOADER_TEMPLATE,
-    "AuditLog": CONFIG.SHEET.AUDIT_LOG,
-    "12_T_QUOTATION": CONFIG.SHEET.VENDOR_COMPARISON,
-    "50_T_RECEIVED_HEADER": CONFIG.SHEET.RECEIVE_HEADER,
-    "51_T_RECEIVED_DETAIL": CONFIG.SHEET.RECEIVE_DETAIL
+function getAppConfig() {
+  return {
+    name: CONFIG.APP.NAME,
+    appUrl: getAppUrl(),
+    devUrl: CONFIG.APP.DEV_URL,
+    execUrl: CONFIG.APP.EXEC_URL,
+    useDev: CONFIG.APP.USE_DEV,
+    defaultPage: CONFIG.APP.DEFAULT_PAGE,
+    loginPage: CONFIG.APP.LOGIN_PAGE,
+    tokenKey: "JG_SIGAP_TOKEN",
+    userKey: "JG_SIGAP_USER",
+    roleKey: "JG_SIGAP_ROLE",
+    rolesKey: "JG_SIGAP_ROLES"
   };
-  return alias[name] || name;
-}
-
-function isAdmin(role) {
-  return [
-    CONFIG.ROLE.ADMIN,
-    CONFIG.ROLE.SUPERADMIN
-  ].includes(role);
-}
-
-function isGA(role) {
-  return [
-    CONFIG.ROLE.GA_VERIFY,
-    CONFIG.ROLE.GA_PP,
-    CONFIG.ROLE.GA_PR,
-    CONFIG.ROLE.GA_RECEIVE,
-    CONFIG.ROLE.GA_INVOICE,
-    CONFIG.ROLE.GA_APPROVE_L1,
-    CONFIG.ROLE.GA_APPROVE_L2
-  ].includes(role);
 }

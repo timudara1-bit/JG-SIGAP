@@ -197,3 +197,23 @@ function toggleUserStatusController(userId, isActive) {
     };
   }
 }
+
+// ============ MASTER DATA FOR USER FORM ============
+
+function getAvailableEmployeesController() {
+  try {
+    return { success: true, data: UserManagementService.getAvailableEmployees() };
+  } catch (error) {
+    Logger.log("getAvailableEmployeesController error: " + error.message);
+    return { success: false, error: error.message };
+  }
+}
+
+function getAvailableDepartmentsController() {
+  try {
+    return { success: true, data: UserManagementService.getAvailableDepartments() };
+  } catch (error) {
+    Logger.log("getAvailableDepartmentsController error: " + error.message);
+    return { success: false, error: error.message };
+  }
+}

@@ -1,20 +1,11 @@
-<!DOCTYPE html>
-<html>
-
-<head>
-
-  <base target="_top">
-
-  <?!= include('CSS_app.css'); ?>
-
-</head>
-
-<body>
-
 <div class="login-box" id="loginBox">
-  <img src="https://drive.google.com/thumbnail?id=1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6" alt="Logo Perusahaan" class="logo">
+  <img
+    src="https://drive.google.com/thumbnail?id=1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6"
+    alt="Logo Perusahaan"
+    class="logo">
 
   <h2>SIGAP</h2>
+
   <p class="subtitle">
     Sistem Informasi General Affair - Pengajuan
   </p>
@@ -27,17 +18,14 @@
   <input
     type="password"
     id="password"
-    placeholder="Password">
+    placeholder="Password"
+    onkeydown="if(event.key === 'Enter'){ login(); }">
 
-  <button class="login-button" id="loginButton" onclick="login()">
+  <button
+    class="login-button"
+    id="loginButton"
+    onclick="login()">
     <span class="button-text">Login</span>
     <span class="button-loader" id="buttonLoader"></span>
   </button>
-
 </div>
-
-<?!= include('JS_login.js'); ?>
-
-</body>
-
-</html>

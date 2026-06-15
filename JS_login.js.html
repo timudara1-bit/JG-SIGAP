@@ -1,96 +1,61 @@
 <script>
+function login() {
+  console.log("JS_LOGIN_FRAMEWORK_V5");
 
-function login(){
+  const emailInput = document.getElementById("email") || document.getElementById("username");
+  const passwordInput = document.getElementById("password");
+  const loginBox = document.getElementById("loginBox") || document.querySelector(".login-box");
+  const loginButton = document.getElementById("loginButton") || document.querySelector("button[onclick='login()']");
+  const buttonLoader = document.getElementById("buttonLoader") || document.querySelector(".button-loader");
 
-  const email =
-    document.getElementById("email").value;
+  const email = emailInput ? emailInput.value.trim() : "";
+  const password = passwordInput ? passwordInput.value : "";
 
-  const password =
-    document.getElementById("password").value;
+  if (!email || !password) {
+    alert("Email/username dan password wajib diisi");
+    return;
+  }
 
-  const loginBox = document.getElementById("loginBox");
-  const loginButton = document.getElementById("loginButton");
-  const buttonLoader = document.getElementById("buttonLoader");
-
-  loginBox.classList.add("loading");
-  loginButton.disabled = true;
-  buttonLoader.classList.add("active");
+  setLoginLoading(true);
 
   google.script.run
+    .withSuccessHandler(function(res) {
+      console.log("LOGIN RESPONSE", res);
 
-    .withSuccessHandler(res => {
-      const role = res && res.user ? (res.user.role_code || res.user.role) : null;
-      const page = getLandingPageByRole(role);
-      const baseUrl = window.top.location.href.split("?")[0];
-      window.top.location.replace(baseUrl + "?page=" + page + "&_=" + Date.now());
+      if (!res) {
+        alert("Login gagal: server tidak mengembalikan response.");
+        setLoginLoading(false);
+        return;
+      }
+
+      if (!res.success) {
+        alert(res.message || "Login gagal.");
+        setLoginLoading(false);
+        return;
+      }
+
+      if (!res.token) {
+        alert("Login berhasil, tetapi token session tidak diterima. Hubungi administrator.");
+        setLoginLoading(false);
+        return;
+      }
+
+      AppCore.saveSession(res);
+
+      const targetPage = res.redirectPage || AppCore.config.defaultPage || "dashboard";
+      AppCore.redirectWithToken(targetPage, res.token);
     })
-
-    .withFailureHandler(err => {
-      loginBox.classList.remove("loading");
-      loginButton.disabled = false;
-      buttonLoader.classList.remove("active");
-      alert(err.message);
+    .withFailureHandler(function(err) {
+      console.error("LOGIN FAILURE", err);
+      setLoginLoading(false);
+      alert((err && err.message) ? err.message : err);
     })
+    .loginUser(email, password, navigator.userAgent || "WEB_BROWSER");
 
-    .loginUser(
-      email,
-      password
-    );
-
-}
-
-function getLandingPageByRole(role) {
-  if (!role) return "dashboard";
-
-  const normalized = String(role || "").trim().toUpperCase();
-
-  switch (normalized) {
-    case "REQUESTER":
-      return "fpb";
-    case "GA_VERIFY":
-    case "GA_PP":
-    case "FAT":
-    case "IA":
-    case "PROCUREMENT":
-    case "WAREHOUSE":
-    case "FINANCE":
-    case "ADMIN":
-    case "SUPERADMIN":
-    case "GA_PR":
-    case "GA_RECEIVE":
-    case "GA_INVOICE":
-    case "PAYMENT":
-    case "USER_APPROVE_L1":
-    case "USER_APPROVE_L2":
-    case "GA_APPROVE_L1":
-    case "GA_APPROVE_L2":
-    case "USER":
-    default:
-      return "dashboard";
+  function setLoginLoading(isLoading) {
+    if (loginBox) loginBox.classList.toggle("loading", !!isLoading);
+    if (loginButton) loginButton.disabled = !!isLoading;
+    if (buttonLoader) buttonLoader.classList.toggle("active", !!isLoading);
   }
 }
-
-  // function login(){
-
-  //   google.script.run
-  //     .withSuccessHandler(function(result){
-
-  //       if(result.success){
-
-  //         google.script.run
-  //           .withSuccessHandler(function(url){
-
-  //             window.top.location.href =
-  //               url + "?page=Index";
-
-  //           })
-  //           .getAppUrl();
-
-  //       }
-
-  //     })
-  //     .loginUser();
-
-  // }
-
 </script>

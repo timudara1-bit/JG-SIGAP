@@ -1,45 +1,74 @@
 <!DOCTYPE html>
 <html>
-
 <head>
-
   <base target="_top">
 
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>JG-SIGAP</title>
+
+  <?!= include('CSS_Layout'); ?>
+  <?!= include('CSS_Navbar'); ?>
+  <?!= include('CSS_Sidebar'); ?>
+  <?!= include('CSS_Footer'); ?>
+
+  <?!= include('CSS_Settings'); ?>
   <?!= include('CSS_app.css'); ?>
   <?!= include('CSS_Dashboard.css'); ?>
-  <script>
-      // Menggunakan tanda kutip agar hasil string JSON dari server dibaca sebagai string teks biasa dulu di browser
-      var rawData = '<?!= initialData ?>';
-      
-      // Ambil data jika string tidak kosong, jika kosong berikan objek kosong {}
-      window.APP_INITIAL_DATA = rawData ? JSON.parse(rawData) : {};
-  </script>
-  <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+  <?!= include('CSS_FPB.css'); ?>
+  <?!= include('CSS_Loader.css'); ?>
 </head>
 
 <body>
+  <?!= include('Layout.html'); ?>
 
-  <?!= include('Layout_Navbar'); ?>
+  <script>
+    var serverData = {};
+    try {
+      // Parsing data bawaan dari doGet backend
+      serverData = JSON.parse('<?!= initialData ?>' || '{}');
+    } catch(e) {
+      serverData = { page: "login" };
+    }
 
-  <div class="main-layout">
+    // Periksa status lokal di browser
+    var localToken = localStorage.getItem("JG_SIGAP_TOKEN");
+    var expiryTime = localStorage.getItem("JG_SIGAP_EXPIRY");
+    var isSessionValid = false;
 
-    <?!= include('Layout_Sidebar'); ?>
+    if (localToken && expiryTime) {
+      if (Date.now() < parseInt(expiryTime, 10)) {
+        isSessionValid = true; 
+      } else {
+        localStorage.removeItem("JG_SIGAP_TOKEN");
+        localStorage.removeItem("JG_SIGAP_EXPIRY");
+      }
+    }
 
-    <div id="content">
+    // Jika user punya sesi valid, paksa halaman mengarah ke dashboard, bukan login
+    if (isSessionValid) {
+      serverData.page = "dashboard";
+      serverData.token = localToken;
+    }
 
-      <?!= include('Page_Dashboard'); ?>
+    window.INITIAL_DATA = serverData;
+    window.APP_INITIAL_DATA = serverData;
+    window.APP_CONFIG = JSON.parse('<?!= appConfig ?>' || '{}');
+  </script>
 
-    </div>
-
-  </div>
-
-  <?!= include('Layout_Footer'); ?>
-
+  
+  <?!= include('JS_core.js'); ?>
+  <?!= include('JS_settings.js'); ?>
+  <?!= include('JS_login.js'); ?>
+  <?!= include('JS_app.js'); ?>
   <?!= include('JS_menu.js'); ?>
   <?!= include('JS_dashboard.js'); ?>
+  <?!= include('JS_dashboardConfig.js'); ?>
+  <?!= include('JS_FPB.js'); ?>
+  <?!= include('JS_loader.js'); ?>
+  <?!= include('JS_sla.js'); ?>
   <?!= include('JS_userManagement.js'); ?>
-  <?!= include('JS_app.js'); ?>
 
 </body>
-
 </html>

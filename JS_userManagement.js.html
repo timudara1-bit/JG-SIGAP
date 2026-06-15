@@ -1,3 +1,4 @@
+<script>
 /**
  * User Management JavaScript
  * Client-side logic for user management interface
@@ -11,13 +12,17 @@ let itemsPerPage = 10;
 let currentEditingUserId = null;
 let currentActionCallback = null;
 let availableRoles = [];
+let availableEmployees = [];
+let availableDepartments = [];
 
 /**
  * Initialize user management page
  */
 function loadUserManagement() {
-  loadUsers();
   loadRoles();
+  loadEmployees();
+  loadDepartments();
+  loadUsers();
 }
 
 /**
@@ -28,7 +33,15 @@ function loadUsers() {
     .withSuccessHandler(function(response) {
       if (response.success) {
         allUsers = response.data || [];
-        applyFilters();
+        const showActive = document.getElementById("filterActive").checked;
+        const showInactive = document.getElementById("filterInactive").checked;
+        filteredUsers = allUsers.filter(user => {
+          if (user.is_active && !showActive) return false;
+          if (!user.is_active && !showInactive) return false;
+          return true;
+        });
+        currentPage = 1;
+        renderUserTable();
       } else {
         showAlert("Error: " + response.error, "error");
       }
@@ -61,12 +74,146 @@ function loadRoles() {
  */
 function populateRoleDropdown() {
   const roleSelect = document.getElementById("roleCode");
-  availableRoles.forEach(role => {
+  if (!roleSelect) return;
+  roleSelect.innerHTML = '<option value="">-- Pilih Role --</option>';
+
+  (availableRoles || []).forEach(role => {
+    const roleId = role.role_id || role.role_code || role.code || "";
+    if (!roleId) return;
     const option = document.createElement("option");
-    option.value = role.role_code;
-    option.textContent = role.role_name || role.role_code;
+    option.value = roleId; // wajib role_id untuk 05_M_USER_ROLE.role_id
+    option.textContent = (role.role_name || role.name || roleId) + " (" + roleId + ")";
     roleSelect.appendChild(option);
   });
+}
+
+/**
+ * Load employees from database for autocomplete/fill form
+ */
+function loadEmployees() {
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        availableEmployees = response.data || [];
+        populateEmployeeDatalist();
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.log("Failed to load employees: " + error);
+    })
+    .getAvailableEmployeesController();
+}
+
+/**
+ * Load departments from database for autocomplete
+ */
+function loadDepartments() {
+  google.script.run
+    .withSuccessHandler(function(response) {
+      if (response.success) {
+        availableDepartments = response.data || [];
+        populateDepartmentDatalist();
+      }
+    })
+    .withFailureHandler(function(error) {
+      console.log("Failed to load departments: " + error);
+    })
+    .getAvailableDepartmentsController();
+}
+
+function populateEmployeeDatalist() {
+  const list = document.getElementById("employeeList");
+  if (!list) return;
+  list.innerHTML = "";
+  (availableEmployees || []).forEach(emp => {
+    const opt = document.createElement("option");
+    opt.value = formatEmployeeOption(emp);
+    opt.setAttribute("data-employee-id", emp.employee_id || "");
+    list.appendChild(opt);
+  });
+}
+
+function populateDepartmentDatalist() {
+  // Departemen tidak dipilih manual di form user.
+  // Nilainya diisi otomatis berdasarkan data karyawan dari database.
+}
+
+function formatEmployeeOption(emp) {
+  const nik = emp.nik || "";
+  const name = emp.full_name || emp.nama || "";
+  const dept = emp.department_name || emp.dept_name || emp.department_id || "";
+  return [nik, name, dept].filter(Boolean).join(" - ");
+}
+
+function findEmployeeFromInput(rawValue) {
+  const key = String(rawValue || "").trim().toLowerCase();
+  if (!key) return null;
+
+  return (availableEmployees || []).find(e => {
+    const display = formatEmployeeOption(e).toLowerCase();
+    return display === key ||
+      sameClient(e.nik, rawValue) ||
+      sameClient(e.full_name, rawValue) ||
+      sameClient(e.nama, rawValue) ||
+      sameClient(e.email, rawValue) ||
+      sameClient(e.employee_id, rawValue);
+  }) || (availableEmployees || []).find(e => {
+    const name = String(e.full_name || e.nama || "").toLowerCase();
+    const nik = String(e.nik || "").toLowerCase();
+    return nik.includes(key) || name.includes(key);
+  }) || null;
+}
+
+function onEmployeeSearchInput() {
+  const input = document.getElementById("employeeSearch");
+  if (!input) return;
+
+  const emp = findEmployeeFromInput(input.value);
+  if (!emp) {
+    document.getElementById("employeeId").value = "";
+    document.getElementById("nik").value = "";
+    document.getElementById("fullName").value = "";
+    document.getElementById("departmentId").value = "";
+    document.getElementById("departmentName").value = "";
+    return;
+  }
+
+  fillEmployeeFields(emp);
+}
+
+function fillEmployeeFields(emp) {
+  document.getElementById("employeeId").value = emp.employee_id || "";
+  document.getElementById("employeeSearch").value = formatEmployeeOption(emp);
+  document.getElementById("nik").value = emp.nik || "";
+  document.getElementById("fullName").value = emp.full_name || emp.nama || "";
+  document.getElementById("email").value = emp.email || "";
+  document.getElementById("username").value = emp.email || "";
+  document.getElementById("departmentId").value = emp.department_id || emp.dept_code || "";
+  document.getElementById("departmentName").value = emp.department_name || emp.dept_name || emp.department_id || emp.dept_code || "";
+}
+
+function setEmployeeFieldsFromUser(user) {
+  const emp = (availableEmployees || []).find(e =>
+    sameClient(e.employee_id, user.employee_id) ||
+    sameClient(e.nik, user.nik) ||
+    sameClient(e.email, user.email)
+  );
+
+  if (emp) {
+    fillEmployeeFields(emp);
+    return;
+  }
+
+  document.getElementById("employeeId").value = user.employee_id || "";
+  document.getElementById("employeeSearch").value = [user.nik, user.full_name].filter(Boolean).join(" - ");
+  document.getElementById("nik").value = user.nik || "";
+  document.getElementById("fullName").value = user.full_name || "";
+  document.getElementById("departmentId").value = user.department_id || "";
+  document.getElementById("departmentName").value = user.department_name || user.department_id || "";
+}
+
+function sameClient(a, b) {
+  return String(a || "").trim().toLowerCase() === String(b || "").trim().toLowerCase();
 }
 
 /**
@@ -102,14 +249,21 @@ function debounceSearch(searchTerm) {
  */
 function performSearch(searchTerm) {
   if (!searchTerm.trim()) {
-    applyFilters();
+    loadUsers();
     return;
   }
 
   google.script.run
     .withSuccessHandler(function(response) {
       if (response.success) {
-        filteredUsers = response.data || [];
+        allUsers = response.data || [];
+        const showActive = document.getElementById("filterActive").checked;
+        const showInactive = document.getElementById("filterInactive").checked;
+        filteredUsers = (response.data || []).filter(user => {
+          if (user.is_active && !showActive) return false;
+          if (!user.is_active && !showInactive) return false;
+          return true;
+        });
         currentPage = 1;
         renderUserTable();
       } else {
@@ -153,8 +307,8 @@ function renderUserTable() {
       <td><strong>${escapeHtml(user.username)}</strong></td>
       <td>${escapeHtml(user.full_name || "-")}</td>
       <td>${escapeHtml(user.email)}</td>
-      <td>${escapeHtml(user.role_code || "-")}</td>
-      <td>${escapeHtml(user.department_id || "-")}</td>
+      <td>${escapeHtml(user.role_name || user.role_id || user.role_code || "-")}</td>
+      <td>${escapeHtml(user.department_name || user.department_id || "-")}</td>
       <td><span class="status-badge ${statusBadgeClass}">${statusText}</span></td>
       <td>
         <div class="action-buttons">
@@ -202,8 +356,14 @@ function showAddUserModal() {
   currentEditingUserId = null;
   document.getElementById("modalTitle").textContent = "Tambah User Baru";
   document.getElementById("userForm").reset();
+  populateRoleDropdown();
+  populateEmployeeDatalist();
+  document.getElementById("employeeId").value = "";
+  document.getElementById("departmentId").value = "";
+  document.getElementById("departmentName").value = "";
+  document.getElementById("email").value = "";
+  document.getElementById("username").value = "";
   document.getElementById("passwordGroup").style.display = "block";
-  document.getElementById("username").disabled = false;
   document.getElementById("userModal").style.display = "block";
 }
 
@@ -216,16 +376,13 @@ function editUser(userId) {
     .withSuccessHandler(function(response) {
       if (response.success && response.data) {
         const user = response.data;
-        document.getElementById("modalTitle").textContent = "Edit User: " + user.username;
-        document.getElementById("username").value = user.username;
-        document.getElementById("username").disabled = true;
-        document.getElementById("email").value = user.email;
-        document.getElementById("fullName").value = user.full_name || "";
-        document.getElementById("employeeId").value = user.employee_id || "";
-        document.getElementById("nik").value = user.nik || "";
-        document.getElementById("roleCode").value = user.role_code;
+        document.getElementById("modalTitle").textContent = "Edit User: " + (user.full_name || user.email || user.username);
+        document.getElementById("username").value = user.email || user.username || "";
+        document.getElementById("email").value = user.email || user.username || "";
+        setEmployeeFieldsFromUser(user);
+        populateRoleDropdown();
+        document.getElementById("roleCode").value = user.role_id || user.role_code || "";
         document.getElementById("approverLevel").value = user.approver_level || 0;
-        document.getElementById("departmentId").value = user.department_id || "";
         document.getElementById("isActive").checked = user.is_active !== false;
         document.getElementById("passwordGroup").style.display = "none";
         document.getElementById("userModal").style.display = "block";
@@ -248,22 +405,54 @@ function closeUserModal() {
  */
 function submitUserForm(event) {
   event.preventDefault();
+  const submitBtn = event.target ? event.target.querySelector('button[type="submit"]') : null;
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.dataset.originalText = submitBtn.dataset.originalText || submitBtn.innerText;
+    submitBtn.innerText = "Menyimpan...";
+  }
+
+  function restoreSubmitButton() {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.innerText = submitBtn.dataset.originalText || "Simpan";
+    }
+  }
+
+  const selectedEmployee = findEmployeeFromInput(document.getElementById("employeeSearch").value);
+  if (selectedEmployee) fillEmployeeFields(selectedEmployee);
 
   const formData = {
-    username: document.getElementById("username").value,
+    username: document.getElementById("email").value,
     email: document.getElementById("email").value,
     full_name: document.getElementById("fullName").value,
     employee_id: document.getElementById("employeeId").value,
+    employee_search: document.getElementById("employeeSearch").value,
     nik: document.getElementById("nik").value,
+    role_id: document.getElementById("roleCode").value,
     role_code: document.getElementById("roleCode").value,
     approver_level: document.getElementById("approverLevel").value,
     department_id: document.getElementById("departmentId").value,
+    department_name: document.getElementById("departmentName").value,
     is_active: document.getElementById("isActive").checked,
     password: document.getElementById("password").value || "password123"
   };
 
+  if (!formData.employee_id && !formData.nik) {
+    showAlert("Silakan pilih karyawan berdasarkan NIK atau nama dari 04_M_EMPLOYEE", "error");
+    restoreSubmitButton();
+    return;
+  }
+
+  if (!formData.email) {
+    showAlert("Email karyawan di 04_M_EMPLOYEE masih kosong. Username otomatis harus memakai email karyawan.", "error");
+    restoreSubmitButton();
+    return;
+  }
+
   if (!formData.role_code) {
     showAlert("Silakan pilih Role", "error");
+    restoreSubmitButton();
     return;
   }
 
@@ -271,15 +460,17 @@ function submitUserForm(event) {
     // Update user
     google.script.run
       .withSuccessHandler(function(response) {
-        if (response.success) {
-          showAlert(response.message || "User berhasil diperbarui", "success");
+        restoreSubmitButton();
+        if (response && response.success) {
+          alert(response.message || "Akun user berhasil diperbarui. Klik OK untuk menutup modal.");
           closeUserModal();
           loadUsers();
         } else {
-          showAlert("Error: " + response.error, "error");
+          showAlert("Error: " + ((response && response.error) || "Update gagal"), "error");
         }
       })
       .withFailureHandler(function(error) {
+        restoreSubmitButton();
         showAlert("Failed to update user: " + error, "error");
       })
       .updateUserController(currentEditingUserId, formData);
@@ -287,15 +478,17 @@ function submitUserForm(event) {
     // Create new user
     google.script.run
       .withSuccessHandler(function(response) {
-        if (response.success) {
-          showAlert(response.message || "User berhasil ditambahkan", "success");
+        restoreSubmitButton();
+        if (response && response.success) {
+          alert(response.message || "Akun user berhasil dibuat. Klik OK untuk menutup modal.");
           closeUserModal();
           loadUsers();
         } else {
-          showAlert("Error: " + response.error, "error");
+          showAlert("Error: " + ((response && response.error) || "Create gagal"), "error");
         }
       })
       .withFailureHandler(function(error) {
+        restoreSubmitButton();
         showAlert("Failed to create user: " + error, "error");
       })
       .createUserController(formData);
@@ -314,7 +507,7 @@ function showUserDetail(userId) {
         document.getElementById("detailName").textContent = user.full_name || "-";
         document.getElementById("detailEmail").textContent = user.email;
         document.getElementById("detailRole").textContent = user.role_code;
-        document.getElementById("detailDept").textContent = user.department_id || "-";
+        document.getElementById("detailDept").textContent = user.department_name || user.department_id || "-";
         document.getElementById("detailStatus").textContent = user.is_active ? "Aktif" : "Nonaktif";
         document.getElementById("detailCreated").textContent = formatDate(user.created_date);
         document.getElementById("detailLastLogin").textContent = user.last_login ? formatDate(user.last_login) : "Belum pernah login";
@@ -516,3 +709,4 @@ window.onclick = function(event) {
     closeConfirmModal();
   }
 };
+</script>

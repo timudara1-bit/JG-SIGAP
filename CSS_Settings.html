@@ -1,0 +1,163 @@
+<style>
+  /* Container Utama Pengaturan */
+  .settings-page {
+    animation: fadeIn 0.4s ease-in-out;
+  }
+
+  .page-header {
+    margin-bottom: 24px;
+  }
+
+  .page-header h1 {
+    font-size: 24px;
+    color: #111827;
+    margin: 0 0 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .page-header p {
+    font-size: 14px;
+    color: #6b7280;
+    margin: 0;
+  }
+
+  /* Desain Tab Bar Moderen */
+  .settings-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 2px solid #e5e7eb;
+    margin-bottom: 20px;
+  }
+
+  .tab-btn {
+    background: none;
+    border: none;
+    padding: 10px 16px;
+    font-size: 14px;
+    font-weight: 600;
+    color: #6b7280;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    margin-bottom: -2px;
+    transition: all 0.2s ease;
+    width: auto; /* Overwrite reset button bawaan */
+  }
+
+  .tab-btn:hover {
+    color: #1f2937;
+  }
+
+  .tab-btn.active {
+    color: #2563eb;
+    border-bottom-color: #2563eb;
+  }
+
+  /* Konten Tab */
+  .tab-content {
+    display: none;
+  }
+
+  .tab-content.active {
+    display: block;
+  }
+
+  /* Action Bar (Judul Tabel + Tombol Tambah) */
+  .action-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+  }
+
+  .action-bar h3 {
+    margin: 0;
+    font-size: 16px;
+    color: #374151;
+  }
+
+  /* Desain Tabel Data Elegan */
+  .crud-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: #ffffff;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  }
+
+  .crud-table th, .crud-table td {
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 14px;
+  }
+
+  .crud-table th {
+    background-color: #f9fafb;
+    color: #4b5563;
+    font-weight: 600;
+    border-bottom: 1px solid #e5e7eb;
+  }
+
+  .crud-table td {
+    border-bottom: 1px solid #f3f4f6;
+    color: #1f2937;
+  }
+
+  .crud-table tr:last-child td {
+    border-bottom: none;
+  }
+
+  /* Komponen Tombol Aksi */
+  .btn-add {
+    background-color: #2563eb;
+    color: #ffffff;
+    border: none;
+    border-radius: 6px;
+    padding: 8px 14px;
+    font-size: 13px;
+    font-weight: 600;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    width: auto;
+  }
+
+  .btn-add:hover { background-color: #1d4ed8; }
+
+  .btn-edit {
+    background-color: #f59e0b;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+    margin-right: 4px;
+  }
+
+  .btn-edit:hover { background-color: #d97706; }
+
+  .btn-delete {
+    background-color: #ef4444;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    padding: 4px 10px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    width: auto;
+  }
+
+  .btn-delete:hover { background-color: #dc2626; }
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(8px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+</style>

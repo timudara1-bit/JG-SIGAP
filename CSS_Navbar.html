@@ -1,0 +1,70 @@
+<style>
+  .main-navbar {
+    height: 60px;
+    background-color: #111827;
+    color: #ffffff;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0 20px;
+    border-bottom: 1px solid #374151;
+    box-sizing: border-box;
+    z-index: 1000;
+  }
+
+  .main-navbar h2 {
+    color: white;
+    margin: 0;
+    font-size: 18px;
+    font-weight: bold;
+  }
+
+  .nav-brand {
+    font-size: 22px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    display: flex;         /* Mengaktifkan flexbox agar logo & teks sejajar */
+    align-items: center;   /* Meratakan logo & teks secara vertikal di tengah */
+    gap: 12px;             /* Memberikan jarak horizontal antara logo dan teks */
+  }
+
+  /* Gaya khusus untuk logo perusahaan di navbar */
+  .nav-logo {
+    height: 36px;          /* Membatasi tinggi logo agar proporsional dengan navbar 60px */
+    width: auto;           /* Membiarkan lebar menyesuaikan aspek rasio asli logo */
+    object-fit: contain;
+    display: block;
+  }
+
+  .navbar-user {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .user-badge {
+    color: #d1d5db;
+    font-size: 13px;
+    font-weight: 500;
+    background-color: #1f2937;
+    padding: 6px 12px;
+    border-radius: 4px;
+    border: 1px solid #374151;
+  }
+
+  .btn-logout {
+    background-color: #dc3545;
+    color: #ffffff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 12px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s ease;
+  }
+
+  .btn-logout:hover {
+    background-color: #c82333;
+  }
+</style>

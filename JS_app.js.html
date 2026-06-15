@@ -1,124 +1,202 @@
 <script>
+/**
+ * =====================================================
+ * JG-SIGAP APP SHELL V5
+ * Satu bootloader untuk public page dan protected page.
+ * =====================================================
+ */
 
-  function loadPage(page) {    
+const PUBLIC_PAGES = ["login", "register"];
 
-    google.script.run
-      .withSuccessHandler(function(html){
+function loadPublicPage(page) {
+  google.script.run
+    .withSuccessHandler(function(html) {
+      const content = document.getElementById("content");
+      if (!content) return;
+      content.innerHTML = html;
+    })
+    .withFailureHandler(function(err) {
+      console.error("PUBLIC PAGE ERROR", err);
+      alert((err && err.message) ? err.message : err);
+    })
+    .getPublicPage(page);
+}
 
-        document.getElementById(
-          "content"
-        ).innerHTML = html;
+function loadPage(page) {
+  const pageName = page || AppCore.config.defaultPage || "dashboard";
+  const token = AppCore.getToken();
 
-        if (page === "dashboard") {          
-
-          // loadSLADashboard();     // SLA engine baru
-          initDashboard();        // partial HTML load
-          loadDashboard();        // existing KPI          
-
-        }
-
-        if (typeof applyRolePermissions === 'function') {
-          applyRolePermissions();
-        }
-
-      })
-    .getPage(page);
-
+  if (!token) {
+    AppCore.clearSession();
+    AppCore.redirectLogin();
+    return;
   }
 
-  window.addEventListener("click", function(e){
+  google.script.run
+    .withSuccessHandler(function(html) {
+      const content = document.getElementById("content");
+      if (!content) return;
 
-    const menu =
-      document.querySelector(".profile-menu");
+      content.innerHTML = html;
+      runPageInitializer(pageName);
+    })
+    .withFailureHandler(function(err) {
+      console.error("LOAD PAGE ERROR", err);
 
-    if(!menu.contains(e.target)){
+      const msg = (err && err.message) ? err.message : String(err || "Gagal memuat halaman");
 
-      document
-        .getElementById("profileDropdown")
-        .classList
-        .remove("show");
-
-    }
-
-  });
-
-
-  
-  function logout() {
-    const confirmLogout = typeof Swal !== 'undefined';
-
-    const proceed = () => {
-      google.script.run
-        .withSuccessHandler(function() {
-          const baseUrl = window.top.location.href.split("?")[0];
-          window.top.location.replace(baseUrl + "?page=login&_=" + Date.now());
-        })
-        .withFailureHandler(function(err) {
-          console.error(err);
-          alert(err.message);
-        })
-        .logoutUser();
-    };
-
-    if (confirmLogout) {
-      Swal.fire({
-        title: "Logout ?",
-        text: "Apakah Anda yakin ingin keluar?",
-        icon: "warning",
-        showCancelButton: true,
-        confirmButtonText: "Ya",
-        cancelButtonText: "Tidak",
-        reverseButtons: true
-      }).then((result) => {
-        if (result.isConfirmed) {
-          proceed();
-        }
-      });
-    } else {
-      if (window.confirm("Apakah Anda yakin ingin keluar?")) {
-        proceed();
+      if (msg.toLowerCase().includes("session")) {
+        AppCore.clearSession();
+        AppCore.redirectLogin();
+        return;
       }
-    }
+
+      alert(msg);
+    })
+    .getPage(pageName, token);
+}
+
+function runPageInitializer(page) {
+  if (page === "dashboard") {
+    if (typeof initDashboard === "function") initDashboard();
+    if (typeof loadDashboard === "function") loadDashboard();
   }
 
-function loadLoaderMenu(){
+  if (page === "user-management" && typeof loadUserManagement === "function") {
+    loadUserManagement();
+  }
+
+  if (typeof applyRolePermissions === "function") {
+    applyRolePermissions();
+  }
+}
+
+function validateSessionAndBoot(page) {
+  AppCore.bootstrapTokenFromUrl();
+
+  const token = AppCore.getToken();
+
+  if (!token) {
+    AppCore.clearSession();
+    AppCore.redirectLogin();
+    return;
+  }
+
+  console.log("MENGIRIM TOKEN KE SERVER:", token); // <-- Tambahkan log ini untuk inspeksi
+
+  google.script.run
+    .withSuccessHandler(function(res) {
+      console.log("SESSION CHECK RESPONSE", res);
+
+      if (!res || !res.success) {
+        AppCore.clearSession();
+        AppCore.redirectLogin();
+        return;
+      }
+
+      const session = res.session || {};
+      AppCore.setSessionContext(session);
+
+      const role = session.role || session.role_code || "";
+
+      if (typeof loadSidebarMenu === "function") {
+        loadSidebarMenu(role);
+      }
+
+      if (typeof loadLoaderMenu === "function") {
+        loadLoaderMenu();
+      }
+
+      loadPage(page || AppCore.config.defaultPage || "dashboard");
+    })
+    .withFailureHandler(function(err) {
+      console.error("SESSION VALIDATION ERROR", err);
+      AppCore.clearSession();
+      AppCore.redirectLogin();
+    })
+    
+    .validateSessionToken(token);
+
+    
+}
+
+function logout() {
+  const token = AppCore.getToken();
+
+  const doLogout = function() {
+    google.script.run
+      .withSuccessHandler(function() {
+        AppCore.clearSession();
+        AppCore.redirectLogin();
+      })
+      .withFailureHandler(function(err) {
+        console.error("LOGOUT ERROR", err);
+        AppCore.clearSession();
+        AppCore.redirectLogin();
+      })
+      .logoutUser(token);
+  };
+
+  if (typeof Swal !== "undefined") {
+    Swal.fire({
+      title: "Logout ?",
+      text: "Apakah Anda yakin ingin keluar?",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Ya",
+      cancelButtonText: "Tidak",
+      reverseButtons: true
+    }).then(function(result) {
+      if (result.isConfirmed) doLogout();
+    });
+  } else {
+    if (window.confirm("Apakah Anda yakin ingin keluar?")) doLogout();
+  }
+}
+
+window.addEventListener("click", function(e) {
+  const menu = document.querySelector(".profile-menu");
+  const dropdown = document.getElementById("profileDropdown");
+
+  if (!menu || !dropdown) return;
+
+  if (!menu.contains(e.target)) {
+    dropdown.classList.remove("show");
+  }
+});
+
+function loadLoaderMenu() {
+  const token = AppCore.getToken();
+
+  if (!google || !google.script || !google.script.run) return;
 
   google.script.run
     .withSuccessHandler(renderLoaderMenu)
-    .getAccessibleLoaders();
-
+    .withFailureHandler(function(err) {
+      console.error("Loader menu error", err);
+    })
+    .getAccessibleLoaders(token);
 }
 
-function renderLoaderMenu(loaders){
-
-  const menu =
-    document.getElementById("loaderMenu");
-
-  if(!menu) return;
+function renderLoaderMenu(loaders) {
+  const menu = document.getElementById("loaderMenu");
+  if (!menu) return;
 
   let html = "";
-
-  loaders.forEach(loader => {
-
-    const loaderCode = loader[0];
-    const loaderName = loader[1];
-    const moduleCode = loader[2];
+  (loaders || []).forEach(function(loader) {
+    const loaderName = loader[1] || loader.loader_name || "Loader";
+    const moduleCode = loader[2] || loader.module_code || "";
 
     html += `
       <li>
-        <a href="#"
-           onclick="openLoader('${moduleCode}')">
-
+        <a href="#" onclick="openLoader('${moduleCode}'); return false;">
           📤 ${loaderName}
-
         </a>
       </li>
     `;
-
   });
 
   menu.innerHTML = html;
-
 }
 
 function loadSidebarMenu(roleCode) {
@@ -130,15 +208,16 @@ function loadSidebarMenu(roleCode) {
       if (!menu) return;
 
       if (!Array.isArray(items) || items.length === 0) {
-        menu.innerHTML = '<li>Tidak ada menu tersedia</li>';
+        menu.innerHTML = "<li>Tidak ada menu tersedia</li>";
         return;
       }
 
       let html = "";
-      items.forEach(item => {
+      items.forEach(function(item) {
         const page = item.page || "";
         const label = item.label || page;
         const icon = item.icon || "";
+
         html += `
           <li>
             <a href="#" onclick="loadPage('${page}'); return false;">
@@ -156,14 +235,78 @@ function loadSidebarMenu(roleCode) {
     .getRoleMenuItems(roleCode);
 }
 
-document.addEventListener(
-  "DOMContentLoaded",
-  function(){
+AppCore.getToken = function() {
+  return localStorage.getItem(AppCore.config.tokenKey) || "";
+};
 
-    loadLoaderMenu();
-
+AppCore.setToken = function(token) {
+  if (token) {
+    localStorage.setItem(AppCore.config.tokenKey, token);
   }
-);
+};
+
+document.addEventListener("DOMContentLoaded", function () {
+  const initial = window.INITIAL_DATA || {};
+  let page = (initial.page || "login").toLowerCase().trim();
+  const token = localStorage.getItem("JG_SIGAP_TOKEN");
+
+  // Jika posisi di halaman login dan tidak punya token, muat halaman login biasa
+  if (!token && (page === "login" || page === "register")) {
+    google.script.run
+      .withSuccessHandler(function (html) {
+        document.getElementById("content").innerHTML = html;
+      })
+      .getPublicPage(page);
+    return;
+  }
+
+  // DI SINI TEMPAT KODE ANDA YANG SEBENARNYA:
+  // JIKA SESI VALID -> Verifikasi token ke Google Spreadsheet (Backend)
+  google.script.run
+    .withSuccessHandler(function (res) {
+      if (!res || !res.success) {
+        console.warn("Token ditolak oleh database server.");
+        localStorage.clear();
+        google.script.run
+          .withSuccessHandler(function (html) {
+            document.getElementById("content").innerHTML = html;
+          })
+          .getPublicPage("login");
+        return;
+      }
+
+      console.log("Verifikasi Sukses. Data User Server:", res.user);
+      
+      if (typeof AppCore !== 'undefined' && res.user) {
+        const userRole = res.user.roleCode || "MONITORING"; 
+        localStorage.setItem("JG_SIGAP_ROLE", userRole);
+      }
+
+      if (page === "login" || page === "register" || page === "") {
+        page = "dashboard";
+        if (window.history && window.history.pushState) {
+          const newUrl = AppCore.getBaseUrl() + "?page=dashboard";
+          window.history.pushState({ page: "dashboard" }, '', newUrl);
+        }
+      }
+
+      // Render Layout & Navigasi Utama (Navbar/Sidebar)
+      if (typeof initAppLayout === "function") {
+        initAppLayout(res.user); 
+      } else if (typeof renderSidebar === "function") {
+        renderSidebar();
+        renderNavbar();
+      }
+
+      // Jalankan pemuatan halaman SPA
+      if (typeof loadPage === "function") {
+        loadPage(page);
+      } else if (typeof renderPage === "function") {
+        renderPage(page);
+      }
+    })
+    .validateSessionToken(token);
+});
 
 
 </script>
