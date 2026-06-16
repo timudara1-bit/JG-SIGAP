@@ -62,14 +62,34 @@
   // ==========================================
   // SUNTIK DATA USER KE NAVBAR (Layout_Navbar)
   // ==========================================
-  const userNameEl = document.getElementById("userName");
-  if (userNameEl) userNameEl.innerText = `${userId} (${currentRole})`;
+  // Suntik lencana nama (di samping foto)
+  const navUserBtn = document.getElementById("navbarUserName");
+  if (navUserBtn) navUserBtn.innerText = userId;
 
+  // Suntik lencana role (di samping nama)
+  const navUserRole = document.getElementById("navbarUserRole");
+  if (navUserRole) navUserRole.innerText = `[${currentRole}]`;
+
+  // Suntik nama besar di dalam Dropdown Header
+  const userNameEl = document.getElementById("userName");
+  if (userNameEl) userNameEl.innerText = userId;
+
+  // Suntik email di dalam Dropdown Header
   const userEmailEl = document.getElementById("userEmail");
   if (userEmailEl) userEmailEl.innerText = userEmail;
 
+  // Suntik foto profil
   const userPhotoEl = document.getElementById("userPhoto");
   if (userPhotoEl) userPhotoEl.src = userPhoto;
+  
+  // const userNameEl = document.getElementById("userName");
+  // if (userNameEl) userNameEl.innerText = `${userId} (${currentRole})`;
+
+  // const userEmailEl = document.getElementById("userEmail");
+  // if (userEmailEl) userEmailEl.innerText = userEmail;
+
+  // const userPhotoEl = document.getElementById("userPhoto");
+  // if (userPhotoEl) userPhotoEl.src = userPhoto;
 
 
   // ==========================================
@@ -126,10 +146,22 @@ window.addEventListener("click", function(event) {
   }
 });
 
+// 🔥 FUNGSI LOGOUT GLOBAL YANG VALID
 window.logout = function() {
   if (confirm("Apakah Anda yakin ingin keluar dari sistem JG-SIGAP?")) {
+    // Bersihkan semua session token lokal di browser
     localStorage.clear();
-    window.location.href = AppCore.getBaseUrl() + "?page=login";
+    sessionStorage.clear();
+
+    // Redirect langsung kembali ke halaman login utama
+    if (typeof AppCore !== 'undefined' && typeof AppCore.getBaseUrl === 'function') {
+      window.location.href = AppCore.getBaseUrl() + "?page=login";
+    } else {
+      // Fallback jika AppCore terhambat
+      const baseUrl = window.location.href.split('?')[0];
+      window.location.href = baseUrl + "?page=login";
+    }
+    
   }
 };
 
@@ -140,12 +172,12 @@ window.openSetting = function() { AppCore.navigate('settings'); };
 
 
 // Fungsi logout global pembongkar session
-window.handleLogoutAction = function() {
-  if (confirm("Apakah Anda yakin ingin keluar dari JG-SIGAP?")) {
-    localStorage.clear();
-    window.location.href = AppCore.getBaseUrl() + "?page=login";
-  }
-};
+// window.handleLogoutAction = function() {
+//   if (confirm("Apakah Anda yakin ingin keluar dari JG-SIGAP?")) {
+//     localStorage.clear();
+//     window.location.href = AppCore.getBaseUrl() + "?page=login";
+//   }
+// };
 
 
 </script>

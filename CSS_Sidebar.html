@@ -2,32 +2,40 @@
   .main-sidebar {
     width: 240px;
     min-width: 240px;
+    height: 100%;
     background-color: #1f2937;
     display: flex;
     flex-direction: column;
-    height: 100%;
     border-right: 1px solid #374151;
     box-sizing: border-box;
+    overflow-y: auto;
   }
 
   .sidebar-header {
     padding: 15px 20px 5px 20px;
     font-size: 11px;
-    color: #6b7280;
+    color: #9ca3af;
     font-weight: bold;
     letter-spacing: 0.8px;
     text-transform: uppercase;
   }
 
   .sidebar-menu {
-    list-style: none; /* Menghilangkan peluru bawaan */
+    list-style: none;
     padding: 0;
     margin: 0;
+  }
+
+  .sidebar-menu li {
+    list-style: none;
+    margin: 0;
+    padding: 0;
   }
 
   .sidebar-item {
     display: flex;
     align-items: center;
+    gap: 8px;
     padding: 14px 20px;
     color: #d1d5db;
     text-decoration: none;
@@ -36,6 +44,7 @@
     cursor: pointer;
     transition: all 0.2s ease;
     border-left: 4px solid transparent;
+    box-sizing: border-box;
   }
 
   .sidebar-item:hover {
@@ -46,17 +55,26 @@
   .sidebar-item.active {
     background-color: #2563eb;
     color: #ffffff;
-    border-left: 4px solid #60a5fa;
+    border-left-color: #60a5fa;
     font-weight: 600;
   }
 
-  /* ENTERPRISE RBAC PRIVILEGE SYSTEM */
+  .sidebar-item.muted {
+    color: #9ca3af;
+    cursor: default;
+  }
+
+  .sidebar-item.muted:hover {
+    background-color: transparent;
+    color: #9ca3af;
+  }
+
   .admin-only {
     display: none !important;
   }
 
-  /* Jika wrapper utama memiliki class role-superadmin, bongkar blok menunya */
-  .role-superadmin .admin-only {
+  .role-superadmin .admin-only,
+  .role-admin .admin-only {
     display: flex !important;
   }
 </style>

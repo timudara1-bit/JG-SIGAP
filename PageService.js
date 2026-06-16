@@ -128,29 +128,6 @@ function isPageAccessible(roleCode, pageName) {
   }
 } 
 
-// function getPublicPage(page) {
-//   const pageName = String(page || "login").trim().toLowerCase();
-
-//   switch (pageName) {
-//     case "login":
-//       return HtmlService
-//         .createTemplateFromFile("Page_Login")
-//         .evaluate()
-//         .getContent();
-
-//     case "register":
-//       return HtmlService
-//         .createTemplateFromFile("Page_Register")
-//         .evaluate()
-//         .getContent();
-
-//     default:
-//       return HtmlService
-//         .createTemplateFromFile("Page_Login")
-//         .evaluate()
-//         .getContent();
-//   }
-// }
 
 function getPage(page, token) {
   const session = SessionService.getSession(token);

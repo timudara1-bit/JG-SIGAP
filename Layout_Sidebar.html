@@ -1,5 +1,41 @@
-<div class="sidebar">
-  <ul id="sidebarMenu">
-    <li>Memuat menu...</li>
+<aside class="main-sidebar">
+
+  <div class="sidebar-header">
+    MENU UTAMA
+  </div>
+
+  <ul id="sidebarMenu" class="sidebar-menu">
+
+    <li>
+      <a href="#" class="sidebar-item active" onclick="loadPage('dashboard'); return false;">
+        📊 Dashboard
+      </a>
+    </li>
+
+    <li>
+      <a href="#" class="sidebar-item" onclick="loadPage('fpb'); return false;">
+        📝 FPB
+      </a>
+    </li>
+
+    <li>
+      <a href="#" class="sidebar-item" onclick="loadPage('user-management'); return false;">
+        👤 User Management
+      </a>
+    </li>
+
   </ul>
-</div>
+
+  <div class="sidebar-header">
+    LOADER
+  </div>
+
+  <ul id="loaderMenu" class="sidebar-menu">
+    <li>
+      <span class="sidebar-item muted">
+        Memuat loader...
+      </span>
+    </li>
+  </ul>
+
+</aside>
