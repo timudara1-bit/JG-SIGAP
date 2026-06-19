@@ -1,0 +1,29 @@
+<div class="page-title">
+  <div><div class="breadcrumb">JG-SIGAP / Verifikasi FAT</div><h1>Verifikasi FAT</h1><p>Verifikasi Draft Payment Plan oleh FAT.</p></div>
+  <div>
+<button class="btn primary" onclick="UI.openModal('Approve FAT','<p>Form akan dibuka sesuai modul dan tersimpan ke database.</p>')">+ Approve FAT</button>
+<button class="btn" onclick="PageRuntime.init(location.hash.replace('#/',''))">Refresh</button>
+</div>
+</div>
+
+<div class="grid grid-5" style="margin-bottom:14px">
+  <div class="card kpi"><div class="ico">📄</div><div><span>Total</span><b id="kpiTotal">0</b></div></div>
+  <div class="card kpi"><div class="ico">⏳</div><div><span>Proses</span><b>0</b></div></div>
+  <div class="card kpi"><div class="ico">⚠️</div><div><span>Warning</span><b id="kpiWarning">0</b></div></div>
+  <div class="card kpi"><div class="ico">⛔</div><div><span>Overdue</span><b id="kpiOverdue">0</b></div></div>
+  <div class="card kpi"><div class="ico">✅</div><div><span>Selesai</span><b>0</b></div></div>
+</div>
+<div class="card">
+  <div class="toolbar">
+    <div class="field"><label>Pencarian</label><input placeholder="Cari dokumen / requester / vendor..."></div>
+    <div class="field"><label>Department</label><select><option>Semua Department</option></select></div>
+    <div class="field"><label>Status</label><select><option>Semua Status</option></select></div>
+    <div class="field"><label>Prioritas</label><select><option>Semua Prioritas</option></select></div>
+    <button class="btn primary">Filter</button><button class="btn">Reset</button>
+  </div>
+  <div class="table-wrap"><table class="table"><thead><tr><th></th><th>No</th><th>Nomor Dokumen</th><th>Department</th><th>PIC/Vendor</th><th>Status</th><th>Aksi</th></tr></thead><tbody data-module-table></tbody></table></div>
+</div>
+<div class="grid grid-2" style="margin-top:14px">
+  <div class="card card-pad"><h3>Detail Terpilih</h3><div class="empty">Pilih data pada tabel untuk melihat detail.</div></div>
+  <div class="card card-pad"><h3>SLA / Lead Time</h3><div id="segmentCards" class="timeline"></div></div>
+</div>

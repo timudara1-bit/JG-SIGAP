@@ -1,0 +1,115 @@
+<div class="page-title">
+  <div>
+    <div class="breadcrumb">JG-SIGAP / Quotation</div>
+    <h1>Quotation Vendor</h1>
+    <p>Input dan bandingkan beberapa penawaran vendor yang terikat dalam satu nomor FPB. Harga terendah akan direkomendasikan sebagai vendor terpilih untuk Underlying.</p>
+  </div>
+  <div>
+    <button class="btn primary" onclick="UI.openModal('Tambah Quotation','<p>Input penawaran vendor akan tersimpan ke 15_T_QUOTATION_HEADER dan 16_T_QUOTATION_DETAIL.</p>')">
+      + Tambah Quotation
+    </button>
+    <button class="btn green" onclick="UI.openModal('Pilih Harga Terendah','<p>Sistem akan mencari quotation terendah per nomor FPB dan menandai vendor terpilih.</p>')">
+      Cari Harga Terendah
+    </button>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:14px">
+  <div class="card kpi">
+    <div class="ico">📋</div>
+    <div><span>Total FPB</span><b id="kpiTotal">0</b></div>
+  </div>
+  <div class="card kpi">
+    <div class="ico">💰</div>
+    <div><span>Total Quotation</span><b>0</b></div>
+  </div>
+  <div class="card kpi">
+    <div class="ico">🏆</div>
+    <div><span>Vendor Terpilih</span><b>0</b></div>
+  </div>
+  <div class="card kpi">
+    <div class="ico">⚠️</div>
+    <div><span>Belum Lengkap</span><b>0</b></div>
+  </div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="toolbar">
+      <div class="field">
+        <label>Cari FPB / Vendor</label>
+        <input data-filter-search placeholder="Cari nomor FPB, vendor, quotation..." />
+      </div>
+      <div class="field">
+        <label>Status</label>
+        <select>
+          <option value="">Semua Status</option>
+          <option value="DRAFT">Draft</option>
+          <option value="SUBMITTED">Submitted</option>
+          <option value="SELECTED">Selected</option>
+        </select>
+      </div>
+      <button class="btn primary" onclick="PageRuntime.init('quotation')">Filter</button>
+      <button class="btn">Export</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="table">
+        <thead>
+          <tr>
+            <th>No</th>
+            <th>Quotation No</th>
+            <th>FPB No</th>
+            <th>Vendor</th>
+            <th>Nilai Penawaran</th>
+            <th>Ranking</th>
+            <th>Terpilih</th>
+            <th>Status</th>
+            <th>Aksi</th>
+          </tr>
+        </thead>
+        <tbody data-module-table></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card card-pad">
+    <h3>Vendor Comparison</h3>
+    <p style="color:#64748b;margin-top:0">
+      Semua quotation yang terikat dengan satu FPB akan dibandingkan di sini. Vendor dengan harga terendah menjadi rekomendasi awal untuk Underlying.
+    </p>
+
+    <div class="empty" style="margin-bottom:12px">
+      Pilih salah satu FPB untuk melihat pembanding vendor.
+    </div>
+
+    <table class="table">
+      <thead>
+        <tr>
+          <th>Vendor</th>
+          <th>Harga</th>
+          <th>Ranking</th>
+          <th>Catatan</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="4">
+            <div class="empty">Data pembanding diambil dari 14_T_VENDOR_COMPARISON.</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+
+<div class="card card-pad" style="margin-top:14px">
+  <h3>Alur Quotation ke Underlying</h3>
+  <div class="timeline">
+    <div class="timeline-step"><b>FPB</b><small>Permintaan barang/jasa</small></div>
+    <div class="timeline-step"><b>Quotation</b><small>Minimal beberapa vendor</small></div>
+    <div class="timeline-step"><b>Comparison</b><small>Ranking harga vendor</small></div>
+    <div class="timeline-step"><b>Vendor Terpilih</b><small>Harga terendah / rekomendasi</small></div>
+    <div class="timeline-step"><b>Underlying</b><small>Lampiran pembanding ikut terikat</small></div>
+  </div>
+</div>

@@ -1,37 +1,21 @@
-/**
- * =====================================================
- * ROUTER V5
- * Semua request dirender lewat satu shell: Index.html.
- * Page login/register/dashboard dimuat oleh SPA loader.
- * =====================================================
- */
-function doGet(e) {
-  const page = e && e.parameter && e.parameter.page
-    ? String(e.parameter.page).trim().toLowerCase()
-    : CONFIG.APP.LOGIN_PAGE;
+class Router {
+  static getPage(pageKey, isPublic, user) {
+    pageKey = pageKey || CONFIG.APP.DEFAULT_PAGE;
+    const page = CONFIG.PAGE[pageKey] || CONFIG.PAGE["not-found"];
 
-  const token = e && e.parameter && e.parameter.token
-    ? String(e.parameter.token).trim()
-    : "";
+    if (!isPublic && page.public) {
+      return { success: true, pageKey, title: page.title, html: include(page.file) };
+    }
 
-  const template = HtmlService.createTemplateFromFile("Index");
+    if (!isPublic && !page.public && user) {
+      // RoleMenuService can be tightened later.
+      const allowed = RoleMenuService.canView(user, pageKey);
+      if (!allowed) {
+        const denied = CONFIG.PAGE["access-denied"];
+        return { success: false, code: "ACCESS_DENIED", pageKey, title: denied.title, html: include(denied.file) };
+      }
+    }
 
-  template.initialData = JSON.stringify({
-    page: page,
-    token: token
-  });
-
-  template.appConfig = JSON.stringify(getAppConfig());
-
-  return template
-    .evaluate()
-    .addMetaTag("viewport", "width=device-width, initial-scale=1")
-    .setTitle(CONFIG.APP.NAME)
-    .setXFrameOptionsMode(HtmlService.XFrameOptionsMode.ALLOWALL);
-}
-
-function include(filename) {
-  return HtmlService
-    .createHtmlOutputFromFile(filename)
-    .getContent();
+    return { success: true, pageKey, title: page.title, html: include(page.file) };
+  }
 }

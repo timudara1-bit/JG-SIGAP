@@ -1,0 +1,24 @@
+<script>
+const Core = (() => {
+  const TOKEN_KEY = "JG_SIGAP_TOKEN";
+  const USER_KEY = "JG_SIGAP_USER";
+
+  function token(){ return localStorage.getItem(TOKEN_KEY) || ""; }
+  function user(){ try{return JSON.parse(localStorage.getItem(USER_KEY)||"null")}catch(e){return null} }
+  function setSession(res){
+    if(res.token) localStorage.setItem(TOKEN_KEY,res.token);
+    if(res.user) localStorage.setItem(USER_KEY,JSON.stringify(res.user));
+  }
+  function clearSession(){ localStorage.removeItem(TOKEN_KEY); localStorage.removeItem(USER_KEY); }
+
+  function api(action, payload){
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler(resolve)
+        .withFailureHandler(err => resolve({success:false,message:err.message||String(err)}))
+        .callApi(action, payload || {}, token());
+    });
+  }
+  return { api, token, user, setSession, clearSession };
+})();
+</script>

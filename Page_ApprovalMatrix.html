@@ -1,0 +1,7 @@
+<div class="page-title">
+  <div><div class="breadcrumb">JG-SIGAP / Approval Matrix</div><h1>Approval Matrix</h1><p>Konfigurasi alur persetujuan berdasarkan department, jenis pengajuan, nilai, dan level approval.</p></div>
+  <div><button class='btn primary' onclick="App.loadPage('tambah-matrix')">+ Tambah Matrix</button></div>
+</div>
+
+<div class="card"><div class="toolbar"><div class="field"><label>Jenis Pengajuan</label><select><option>Semua</option></select></div><div class="field"><label>Department</label><select><option>Semua</option></select></div><button class="btn primary">Filter</button></div><table class="table"><thead><tr><th>No</th><th>Matrix ID</th><th>Jenis</th><th>Department</th><th>Min</th><th>Max</th><th>Status</th><th>Aksi</th></tr></thead><tbody data-master-table></tbody></table></div>
+<div class="card card-pad" style="margin-top:14px"><h3>Preview Alur Approval</h3><div class="timeline"><div class="timeline-step">Requester</div><div class="timeline-step">GA Verify</div><div class="timeline-step">FAT Verify</div><div class="timeline-step">IA Verify</div><div class="timeline-step">Final Approve</div></div></div>

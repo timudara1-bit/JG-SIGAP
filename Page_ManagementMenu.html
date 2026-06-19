@@ -1,0 +1,60 @@
+<div class="page-title">
+  <div>
+    <div class="breadcrumb">JG-SIGAP / Management Menu</div>
+    <h1>Management Menu</h1>
+    <p>Kelola struktur menu, urutan sidebar, parent-child menu, page key, icon, status menu, dan relasi akses role.</p>
+  </div>
+  <div>
+    <button class="btn primary" onclick="UI.openModal('Tambah Menu','<p>Form tambah menu akan menyimpan data ke 15_M_MENU.</p>')">
+      + Tambah Menu
+    </button>
+    <button class="btn" onclick="UI.openModal('Sinkron Menu','<p>Jalankan function syncDefaultMenuToDatabase() dari editor Apps Script untuk sinkronisasi menu default ke 15_M_MENU.</p>')">
+      Sinkron Menu
+    </button>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:14px">
+  <div class="card kpi"><div class="ico">🧭</div><div><span>Total Menu</span><b id="menuTotal">0</b></div></div>
+  <div class="card kpi"><div class="ico">✅</div><div><span>Menu Aktif</span><b id="menuActive">0</b></div></div>
+  <div class="card kpi"><div class="ico">🔐</div><div><span>Role Access</span><b id="menuRoleAccess">0</b></div></div>
+  <div class="card kpi"><div class="ico">📌</div><div><span>Parent Menu</span><b id="menuParent">0</b></div></div>
+</div>
+
+<div class="grid grid-2">
+  <div class="card">
+    <div class="toolbar">
+      <div class="field"><label>Cari Menu</label><input data-filter-search placeholder="Cari menu_code / menu_name / page_key..." /></div>
+      <div class="field"><label>Status</label><select><option value="">Semua Status</option><option value="1">Aktif</option><option value="0">Nonaktif</option></select></div>
+      <button class="btn primary" onclick="PageRuntime.init('management-menu')">Filter</button>
+      <button class="btn">Export</button>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr><th>No</th><th>Menu ID</th><th>Menu Code</th><th>Menu Name</th><th>Page Key</th><th>Status</th><th>Aksi</th></tr></thead>
+        <tbody data-master-table></tbody>
+      </table>
+    </div>
+  </div>
+
+  <div class="card card-pad">
+    <h3>Preview Struktur Sidebar</h3>
+    <div class="empty" style="margin-bottom:12px">Preview ini menjadi acuan struktur menu kiri aplikasi. Data utama diambil dari 15_M_MENU dan akses role dari 16_M_ROLE_MENU.</div>
+    <div class="timeline" style="display:block;overflow:visible">
+      <div class="timeline-step" style="margin-bottom:8px;text-align:left">🏠 Dashboard</div>
+      <div class="timeline-step" style="margin-bottom:8px;text-align:left">📋 Pengadaan</div>
+      <div class="timeline-step" style="margin-bottom:8px;text-align:left">📊 Monitoring</div>
+      <div class="timeline-step" style="margin-bottom:8px;text-align:left">🗄️ Master Data</div>
+      <div class="timeline-step" style="margin-bottom:8px;text-align:left">⚙️ Settings</div>
+    </div>
+  </div>
+</div>
+
+<div class="card card-pad" style="margin-top:14px">
+  <h3>Role Access Matrix</h3>
+  <p style="color:#64748b;margin-top:0">Gunakan bagian ini untuk mengatur menu mana yang bisa dilihat, dibuat, diedit, approve, delete, dan export oleh setiap role.</p>
+  <table class="table">
+    <thead><tr><th>Role</th><th>Menu</th><th>View</th><th>Create</th><th>Edit</th><th>Approve</th><th>Delete</th><th>Export</th></tr></thead>
+    <tbody><tr><td colspan="8"><div class="empty">Data hak akses menu akan diambil dari 16_M_ROLE_MENU.</div></td></tr></tbody>
+  </table>
+</div>

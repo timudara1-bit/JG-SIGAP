@@ -1,276 +1,113 @@
 class Repository {
+  static ss() {
+    const id = String(CONFIG.APP.SPREADSHEET_ID || "").trim();
+    if (id && id !== "ISI_DENGAN_SPREADSHEET_ID_DATABASE_REV1") return SpreadsheetApp.openById(id);
+    const active = SpreadsheetApp.getActiveSpreadsheet();
+    if (active) return active;
+    throw new Error("SPREADSHEET_ID belum diisi dan active spreadsheet tidak ditemukan.");
+  }
 
-  static getSheet(sheetName) {
+  static sheet(sheetName) {
+    const sh = this.ss().getSheetByName(sheetName);
+    if (!sh) throw new Error("Sheet tidak ditemukan: " + sheetName);
+    return sh;
+  }
 
-    sheetName = typeof resolveSheetName === "function"
-      ? resolveSheetName(sheetName)
-      : sheetName;
+  static exists(sheetName) {
+    return !!this.ss().getSheetByName(sheetName);
+  }
 
-    const sheet =
-      SpreadsheetApp
-        .getActiveSpreadsheet()
-        .getSheetByName(sheetName);
-
-    if (!sheet) {
-
-      throw new Error(
-        "Sheet tidak ditemukan: " +
-        sheetName
-      );
-
-    }
-
-    return sheet;
-
+  static headers(sheetName) {
+    const sh = this.sheet(sheetName);
+    const lastCol = sh.getLastColumn();
+    if (!lastCol) return [];
+    return sh.getRange(1, 1, 1, lastCol).getValues()[0].map(h => String(h || "").trim()).filter(Boolean);
   }
 
   static getAll(sheetName) {
-
-    const sheet =
-      this.getSheet(sheetName);
-
-    const data =
-      sheet.getDataRange().getValues();
-
-    const headers =
-      data.shift();
-
-    return data.map(row => {
-
-      let obj = {};
-
-      headers.forEach((header, i) => {
-        obj[header] = row[i];
+    const sh = this.sheet(sheetName);
+    const values = sh.getDataRange().getValues();
+    if (values.length < 2) return [];
+    const headers = values[0].map(h => String(h || "").trim());
+    return values.slice(1)
+      .filter(row => row.some(v => v !== "" && v !== null))
+      .map(row => {
+        const obj = {};
+        headers.forEach((h, i) => { if (h) obj[h] = row[i]; });
+        return obj;
       });
-
-      return obj;
-
-    });
-
   }
 
-  static findOne(
-    sheetName,
-    field,
-    value
-  ) {
-
-    const data =
-      this.getAll(sheetName);
-
-    return data.find(r =>
-      String(r[field] || "").trim().toLowerCase() ===
-      String(value || "").trim().toLowerCase()
-    );
-
+  static safeGetAll(sheetName) {
+    try {
+      if (!this.exists(sheetName)) return [];
+      return this.getAll(sheetName);
+    } catch (err) {
+      Logger.log("safeGetAll " + sheetName + ": " + err.message);
+      return [];
+    }
   }
 
-  // static insert(
-  //   sheetName,
-  //   data
-  // ) {
+  static findOne(sheetName, key, value) {
+    return this.safeGetAll(sheetName).find(r => same(r[key], value)) || null;
+  }
 
-  //   const sheet =
-  //     this.getSheet(sheetName);
-
-  //   const headers =
-  //     sheet
-  //       .getRange(
-  //         1,
-  //         1,
-  //         1,
-  //         sheet.getLastColumn()
-  //       )
-  //       .getValues()[0];
-
-  //   const row =
-  //     headers.map(
-  //       header =>
-  //         data[header] !== undefined
-  //           ? data[header]
-  //           : ""
-  //     );
-
-  //   sheet.appendRow(row);
-
-  //   return true;
-
-  // }
+  static findBy(sheetName, key, value) {
+    return this.safeGetAll(sheetName).filter(r => same(r[key], value));
+  }
 
   static insert(sheetName, data) {
-
-  try {
-
-    const sheet =
-      this.getSheet(sheetName);
-
-    const headers =
-      sheet
-        .getRange(
-          1,
-          1,
-          1,
-          sheet.getLastColumn()
-        )
-        .getValues()[0];
-
-    Logger.log(
-      "HEADERS = " +
-      JSON.stringify(headers)
-    );
-
-    const row =
-      headers.map(header => {
-
-        return data[header] !== undefined
-          ? data[header]
-          : "";
-
-      });
-
-    Logger.log(
-      "ROW = " +
-      JSON.stringify(row)
-    );
-
-    sheet.appendRow(row);
-
-    Logger.log(
-      "INSERT SUCCESS"
-    );
-
-    return true;
-
-  } catch(err){
-
-    Logger.log(
-      "INSERT ERROR = " +
-      err.message
-    );
-
-    throw err;
-
+    const sh = this.sheet(sheetName);
+    const headers = this.headers(sheetName);
+    const row = headers.map(h => data[h] !== undefined ? data[h] : "");
+    sh.appendRow(row);
+    return data;
   }
 
+  static update(sheetName, keyName, keyValue, changes) {
+    const sh = this.sheet(sheetName);
+    const values = sh.getDataRange().getValues();
+    if (values.length < 2) return false;
+    const headers = values[0].map(h => String(h || "").trim());
+    const keyIdx = headers.indexOf(keyName);
+    if (keyIdx === -1) throw new Error("Kolom " + keyName + " tidak ada di " + sheetName);
+    for (let i = 1; i < values.length; i++) {
+      if (same(values[i][keyIdx], keyValue)) {
+        Object.keys(changes).forEach(field => {
+          const idx = headers.indexOf(field);
+          if (idx !== -1) sh.getRange(i + 1, idx + 1).setValue(changes[field]);
+        });
+        return true;
+      }
+    }
+    return false;
+  }
+
+  static softDelete(sheetName, keyName, keyValue) {
+    return this.update(sheetName, keyName, keyValue, { is_active: 0, deleted_at: new Date(), updated_at: new Date() });
+  }
+
+  static upsert(sheetName, keyName, data) {
+    if (data[keyName] && this.findOne(sheetName, keyName, data[keyName])) {
+      this.update(sheetName, keyName, data[keyName], data);
+      return data;
+    }
+    return this.insert(sheetName, data);
+  }
 }
 
-  static update(
-    sheetName,
-    idValue,
-    updateData,
-    idField = "user_id"
-  ) {
+function same(a, b) {
+  return String(a === undefined || a === null ? "" : a).trim().toLowerCase() ===
+         String(b === undefined || b === null ? "" : b).trim().toLowerCase();
+}
 
-    const sheet =
-      this.getSheet(sheetName);
+function isActiveValue(v) {
+  const s = String(v).trim().toLowerCase();
+  return v === true || v === 1 || s === "1" || s === "true" || s === "aktif" || s === "active";
+}
 
-    const values =
-      sheet.getDataRange().getValues();
+function now_() { return new Date(); }
 
-    const headers =
-      values[0];
-
-    const idCol =
-      headers.indexOf(idField);
-
-    if (idCol === -1) {
-
-      throw new Error(
-        "Field " +
-        idField +
-        " tidak ditemukan"
-      );
-
-    }
-
-    for (
-      let i = 1;
-      i < values.length;
-      i++
-    ) {
-
-      if (
-        String(values[i][idCol]) ===
-        String(idValue)
-      ) {
-
-        Object.keys(updateData)
-          .forEach(key => {
-
-            const col =
-              headers.indexOf(key);
-
-            if (col > -1) {
-
-              values[i][col] =
-                updateData[key];
-
-            }
-
-          });
-
-        sheet
-          .getRange(
-            i + 1,
-            1,
-            1,
-            headers.length
-          )
-          .setValues([
-            values[i]
-          ]);
-
-        return true;
-
-      }
-
-    }
-
-    return false;
-
-  }
-
-  static delete(
-    sheetName,
-    idValue,
-    idField = "user_id"
-  ) {
-
-    const sheet =
-      this.getSheet(sheetName);
-
-    const values =
-      sheet.getDataRange().getValues();
-
-    const headers =
-      values[0];
-
-    const idCol =
-      headers.indexOf(idField);
-
-    for (
-      let i = 1;
-      i < values.length;
-      i++
-    ) {
-
-      if (
-        String(values[i][idCol]) ===
-        String(idValue)
-      ) {
-
-        sheet.deleteRow(
-          i + 1
-        );
-
-        return true;
-
-      }
-
-    }
-
-    return false;
-
-  }
-
+function uid(prefix) {
+  return prefix + Utilities.formatDate(new Date(), CONFIG.APP.TIMEZONE, "yyyyMMddHHmmss") + "-" + Utilities.getUuid().slice(0, 6).toUpperCase();
 }

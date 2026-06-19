@@ -1,50 +1,24 @@
-const AuditService = {
-
-  /**
-   * Format fleksibel:
-   * write(action, description)
-   * write(moduleName, recordId, action, userId, description)
-   */
-  write(a, b, c, d, e) {
-
-    const sh = SpreadsheetApp.getActive().getSheetByName(CONFIG.SHEET.AUDIT_LOG);
-    if (!sh) return;
-
-    const moduleName = c ? a : "SYSTEM";
-    const recordId = c ? b : "";
-    const action = c ? c : a;
-    const userId = c ? d : getActiveUserIdSafe_();
-    const description = c ? e : b;
-
-    const headers = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0];
-    const rowObject = {
-      audit_id: Utilities.getUuid(),
-      module_name: moduleName,
-      record_id: recordId,
-      action: action,
-      old_value: "",
-      new_value: description || "",
-      user_id: userId || "",
-      action_date: new Date(),
-      timestamp: new Date(),
-      email: Session.getActiveUser().getEmail(),
-      description: description || ""
-    };
-
-    const row = headers.map(h => rowObject[h] !== undefined ? rowObject[h] : "");
-    sh.appendRow(row);
-  },
-
-  log(action, description = "") {
-    return this.write(action, description);
-  }
-};
-
-function getActiveUserIdSafe_() {
-  try {
-    const session = SessionService.getSession();
-    return session ? session.user_id : "";
-  } catch (err) {
-    return "";
+class AuditService {
+  static log(user, action, documentType, documentId, oldValue, newValue, remarks) {
+    try {
+      Repository.insert(CONFIG.SHEET.AUDIT_LOG, {
+        audit_id: uid("AUD-"),
+        timestamp: new Date(),
+        user_id: user && user.user_id ? user.user_id : "",
+        username: user && user.username ? user.username : "",
+        role_code: user && user.roles ? user.roles.join(",") : "",
+        module_name: documentType || "",
+        action: action || "",
+        document_type: documentType || "",
+        document_id: documentId || "",
+        old_value: oldValue ? JSON.stringify(oldValue) : "",
+        new_value: newValue ? JSON.stringify(newValue) : "",
+        ip_address: "",
+        device_info: "",
+        remarks: remarks || ""
+      });
+    } catch (err) {
+      Logger.log("Audit failed: " + err.message);
+    }
   }
 }

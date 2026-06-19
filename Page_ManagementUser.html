@@ -1,0 +1,34 @@
+<div class="page-title">
+  <div>
+    <div class="breadcrumb">JG-SIGAP / Master Data</div>
+    <h1>Management User</h1>
+    <p>Tambah akun user berdasarkan data karyawan di 04_M_EMPLOYEE dan role dari 02_M_ROLE.</p>
+  </div>
+  <div>
+    <button class="btn primary" onclick="App.openAddUserModal()">+ Tambah User</button>
+    <button class="btn" onclick="App.loadUserManagement()">Refresh</button>
+  </div>
+</div>
+
+<div class="grid grid-4" style="margin-bottom:14px">
+  <div class="card kpi"><div class="ico">👥</div><div><span>Total User</span><b id="userTotal">0</b></div></div>
+  <div class="card kpi"><div class="ico">✅</div><div><span>Aktif</span><b id="userActive">0</b></div></div>
+  <div class="card kpi"><div class="ico">🔐</div><div><span>Role Aktif</span><b id="roleTotal">0</b></div></div>
+  <div class="card kpi"><div class="ico">🧑‍💼</div><div><span>Hasil Cari</span><b id="employeeResultTotal">0</b></div></div>
+</div>
+
+<div class="card">
+  <div class="toolbar">
+    <div class="field">
+      <label>Cari User</label>
+      <input id="userSearchInput" placeholder="Cari username / nama / nik / role..." onkeydown="if(event.key==='Enter') App.loadUserManagement()">
+    </div>
+    <button class="btn primary" onclick="App.loadUserManagement()">Cari</button>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>User ID</th><th>Username</th><th>Nama</th><th>NIK</th><th>Department</th><th>Role</th><th>Status</th></tr></thead>
+      <tbody id="userTableBody"><tr><td colspan="7"><div class="empty">Memuat data user...</div></td></tr></tbody>
+    </table>
+  </div>
+</div>

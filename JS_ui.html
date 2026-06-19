@@ -1,0 +1,123 @@
+<script>
+const UI = (() => {
+  function layout(contentHtml) {
+    const u = Core.user() || {};
+    return `
+      <div class="app-shell">
+        <aside class="sidebar">
+          <div class="brand">
+            <div class="brand-logo logo-wrap"><img src="https://drive.google.com/thumbnail?id=1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6" class="brand-logo-img" alt="JG-SIGAP Logo" onerror="this.outerHTML='JG'"></div>
+            <div><h2>JG-SIGAP</h2><small>Procurement System</small></div>
+          </div>
+          ${menuHtml()}
+        </aside>
+        <main class="main">
+          <div class="topbar">
+            <div class="hamb">☰</div>
+            <div class="top-search">
+              <input placeholder="Cari menu / data / dokumen..." onkeydown="if(event.key==='Enter') App.globalSearch(this.value)">
+            </div>
+            <div class="userbox">
+              <span title="Notification">🔔</span>
+              <div class="profile-menu-wrap" onclick="UI.toggleProfileDropdown(event)">
+                <div>
+                  <b>${esc(u.full_name || "User")}</b>
+                  <small style="display:block;color:#64748b">${esc((u.roles || [])[0] || "")}</small>
+                </div>
+                ${avatar(u)}
+                ${profileDropdown(u)}
+              </div>
+            </div>
+          </div>
+          <div class="content" id="pageContent">${contentHtml}</div>
+        </main>
+      </div>
+      ${modalHtml()}
+    `;
+  }
+
+  function menuHtml() {
+    const groups = [
+      ["DASHBOARD",[["dashboard","🏠","Dashboard"]]],
+      ["MONITORING",[["monitoring","📊","Monitoring"],["sla","⏱️","SLA Monitoring"],["flow-timeline","🔗","Flow Timeline"],["my-task","✅","My Task"]]],
+      ["LAPORAN",[["laporan","📑","Laporan"]]],
+      ["PENGADAAN",[["fpb","📋","FPB"],["quotation","💰","Quotation"],["underlying","🧾","Underlying"],["verifikasi-ga","✅","Verifikasi GA"],["pp","📄","PP"],["verifikasi-fat","🛡️","Verifikasi FAT"],["verifikasi-ia","🔎","Verifikasi IA"],["pp-approve","☑️","PP Approve"]]],
+      ["PROSES",[["pr","📝","PR"],["po","📦","PO"],["receive","📥","Receive"],["invoice","🧾","Invoice / SPD"],["payment","💳","Payment"],["penghapusan","🗑️","Penghapusan"],["loader","⬆️","Loader"]]],
+      ["MASTER DATA",[["data-master","🗄️","Data Master"],["management-user","👥","Management User"],["management-role","🔐","Management Role"],["management-menu","🧭","Management Menu"],["approval-matrix","🧩","Approval Matrix"]]],
+      ["SETTINGS",[["settings","⚙️","Settings"]]]
+    ];
+    return groups.map(g => `<div class="menu-section">${g[0]}</div>` + g[1].map(m => `<a class="menu-item" data-page="${m[0]}" onclick="App.loadPage('${m[0]}')"><span>${m[1]}</span><label>${m[2]}</label></a>`).join("")).join("");
+  }
+
+  function avatar(u) {
+    const name = String((u && u.full_name) || "U");
+    const initials = esc(name.slice(0, 2).toUpperCase());
+    const photo = String((u && u.profile_photo_url) || "");
+    if (photo) return `<img class="avatar-img" src="${esc(photo)}" onerror="this.outerHTML='<div class=&quot;avatar&quot;>${initials}</div>'">`;
+    return `<div class="avatar">${initials}</div>`;
+  }
+
+  function profileDropdown(u) {
+    const name = esc((u && u.full_name) || "User");
+    const email = esc((u && (u.email || u.username)) || "");
+    const role = esc(((u && u.roles) || [])[0] || "");
+    return `
+      <div class="profile-dropdown" id="profileDropdown" onclick="event.stopPropagation()">
+        <div class="profile-drop-head">
+          ${avatar(u)}
+          <div>
+            <b>${name}</b>
+            <small style="display:block;color:#64748b">${email}</small>
+            <small style="display:block;color:#64748b">${role}</small>
+          </div>
+        </div>
+        <div class="profile-drop-body">
+          <button class="profile-drop-item" onclick="App.openProfileModal()">👤 Profile Saya</button>
+          <button class="profile-drop-item" onclick="App.openChangePhotoModal()">🖼️ Ganti Foto Profile</button>
+          <button class="profile-drop-item" onclick="App.loadPage('settings')">⚙️ Settings</button>
+          <button class="profile-drop-item danger" onclick="App.logout()">🚪 Logout</button>
+        </div>
+      </div>
+    `;
+  }
+
+  function toggleProfileDropdown(event) {
+    event.stopPropagation();
+    const el = document.getElementById("profileDropdown");
+    if (el) el.classList.toggle("show");
+  }
+
+  document.addEventListener("click", function () {
+    const el = document.getElementById("profileDropdown");
+    if (el) el.classList.remove("show");
+  });
+
+  function modalHtml() {
+    return `<div class="modal-backdrop" id="modalBackdrop"><div class="modal"><div class="modal-head"><h3 id="modalTitle">Modal</h3><button class="btn" onclick="UI.closeModal()">×</button></div><div class="modal-body" id="modalBody"></div><div class="modal-foot" id="modalFoot"></div></div></div>`;
+  }
+
+  function openModal(title, body, foot) {
+    document.getElementById("modalTitle").innerHTML = title;
+    document.getElementById("modalBody").innerHTML = body;
+    document.getElementById("modalFoot").innerHTML = foot || `<button class="btn" onclick="UI.closeModal()">Tutup</button>`;
+    document.getElementById("modalBackdrop").style.display = "flex";
+  }
+
+  function closeModal() {
+    const el = document.getElementById("modalBackdrop");
+    if (el) el.style.display = "none";
+  }
+
+  function esc(v) {
+    return String(v == null ? "" : v).replace(/[&<>"']/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#039;" }[m]));
+  }
+
+  function badge(status) {
+    const s = String(status || "").toUpperCase();
+    let c = s.includes("OVERDUE") || s.includes("REJECT") ? "red" : s.includes("WARNING") || s.includes("DRAFT") || s.includes("PENDING") ? "orange" : s.includes("APPROVED") || s.includes("DONE") || s.includes("ACTIVE") || s.includes("OPEN") ? "green" : "blue";
+    return `<span class="badge ${c}">${esc(status || "-")}</span>`;
+  }
+
+  return { layout, openModal, closeModal, esc, badge, toggleProfileDropdown };
+})();
+</script>

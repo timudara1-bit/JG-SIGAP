@@ -1,0 +1,1495 @@
+<script>
+const App = (() => {
+  let currentPage = "";
+
+  function init(){
+    if(!Core.token()) loadPublicLogin();
+    else loadPage(location.hash ? location.hash.replace("#/","") : (APP_CONFIG.defaultPage || "dashboard"));
+  }
+
+  function loadPublicLogin(){
+    google.script.run.withSuccessHandler(res=>{
+      document.getElementById("app").innerHTML = res.html;
+    }).getPublicPage("login");
+  }
+
+  function loadPage(pageKey){
+    currentPage = pageKey;
+    location.hash = "#/" + pageKey;
+    google.script.run.withSuccessHandler(res=>{
+      if(!res.success && res.code === "UNAUTHORIZED"){ Core.clearSession(); loadPublicLogin(); return; }
+      document.getElementById("app").innerHTML = UI.layout(res.html);
+      document.querySelectorAll(".menu-item").forEach(a=>a.classList.toggle("active", a.dataset.page===pageKey));
+      PageRuntime.init(pageKey);
+    }).getPage(pageKey, Core.token());
+  }
+
+  async function login(){
+    const username = document.getElementById("loginEmail").value;
+    const password = document.getElementById("loginPassword").value;
+    const res = await Core.api("login", {username, password});
+    if(!res.success){ alert(res.message || "Login gagal"); return; }
+    Core.setSession(res);
+    loadPage(res.defaultPage || "dashboard");
+  }
+
+  async function logout(){
+    if(!confirm("Anda yakin ingin logout dari JG-SIGAP?")) return;
+    await Core.api("logout", {});
+    Core.clearSession();
+    loadPublicLogin();
+  }
+
+  function globalSearch(q){ console.log("search", q); }
+
+
+  function openProfileModal(){
+    const u = Core.user() || {};
+    UI.openModal("Profile Saya",
+      `<div style="text-align:center">${u.profile_photo_url ? `<img class="profile-photo-preview" src="${UI.esc(u.profile_photo_url)}">` : `<div class="avatar" style="width:96px;height:96px;margin:0 auto 14px;font-size:32px">${UI.esc((u.full_name||"U").slice(0,2).toUpperCase())}</div>`}</div>
+       <table class="table">
+        <tr><th>Nama</th><td>${UI.esc(u.full_name || "")}</td></tr>
+        <tr><th>Email</th><td>${UI.esc(u.email || u.username || "")}</td></tr>
+        <tr><th>Role</th><td>${UI.esc((u.roles || []).join(", "))}</td></tr>
+       </table>`,
+      `<button class="btn" onclick="UI.closeModal()">Tutup</button><button class="btn primary" onclick="App.openChangePhotoModal()">Ganti Foto</button>`
+    );
+  }
+
+  function openChangePhotoModal(){
+    UI.openModal("Ganti Foto Profile",
+      `<div style="text-align:center">
+        <img id="profilePhotoPreview" class="profile-photo-preview" style="display:none">
+        <input id="profilePhotoInput" class="profile-photo-upload" type="file" accept="image/*" onchange="App.previewProfilePhoto(this)">
+        <button class="btn" onclick="document.getElementById('profilePhotoInput').click()">Pilih Foto</button>
+        <p style="color:#64748b;font-size:13px">Format JPG/PNG, maksimal 2 MB.</p>
+      </div>`,
+      `<button class="btn" onclick="UI.closeModal()">Batal</button><button class="btn primary" onclick="App.uploadProfilePhoto()">Upload Foto</button>`
+    );
+  }
+
+  function previewProfilePhoto(input){
+    const file = input.files && input.files[0];
+    if(!file) return;
+    if(file.size > 2 * 1024 * 1024){ alert("Ukuran foto maksimal 2 MB."); input.value=""; return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = document.getElementById("profilePhotoPreview");
+      if(img){ img.src = e.target.result; img.style.display = "block"; }
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function uploadProfilePhoto(){
+    const input = document.getElementById("profilePhotoInput");
+    const file = input && input.files ? input.files[0] : null;
+    if(!file){ alert("Pilih foto terlebih dahulu."); return; }
+    const reader = new FileReader();
+    reader.onload = async e => {
+      const res = await Core.api("updateProfilePhoto", { fileName:file.name, mimeType:file.type || "image/png", dataUrl:e.target.result });
+      if(!res.success){ alert(res.message || "Upload foto gagal"); return; }
+      const u = Core.user() || {};
+      u.profile_photo_url = res.data.profile_photo_url;
+      localStorage.setItem("JG_SIGAP_USER", JSON.stringify(u));
+      alert(res.message || "Foto profile berhasil diperbarui");
+      UI.closeModal();
+      loadPage(location.hash.replace("#/","") || "dashboard");
+    };
+    reader.readAsDataURL(file);
+  }
+
+
+
+  async function syncLoaderConfig() {
+    const res = await Core.api("syncLoaderConfig", {});
+    alert(res.message || (res.success ? "Config loader berhasil disinkronkan" : "Gagal sinkron config loader"));
+    if (res.success) PageRuntime.init("loader");
+  }
+
+  function openLoaderImport(loaderId) {
+    UI.openModal(
+      "Import Data Loader",
+      `<p>Loader ID: <b>${UI.esc(loaderId)}</b></p>
+       <div class="field">
+         <label>Pilih File CSV</label>
+         <input id="loaderFileInput" type="file" accept=".csv">
+       </div>
+       <div id="loaderValidateResult" class="empty">Pilih file CSV lalu klik Validasi File.</div>`,
+      `<button class="btn" onclick="UI.closeModal()">Batal</button>
+       <button class="btn primary" onclick="App.validateLoaderFile('${UI.esc(loaderId)}')">Validasi File</button>
+       <button id="loaderImportBtn" class="btn green" style="display:none" onclick="App.processLoaderImport('${UI.esc(loaderId)}')">Proses Import</button>`
+    );
+    window.__JG_SIGAP_LOADER_VALID_ROWS = [];
+  }
+
+  async function validateLoaderFile(loaderId) {
+    const input = document.getElementById("loaderFileInput");
+    const file = input && input.files ? input.files[0] : null;
+    if (!file) {
+      alert("Pilih file CSV terlebih dahulu.");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = async function (e) {
+      const res = await Core.api("validateLoaderFile", {
+        loader_id: loaderId,
+        fileName: file.name,
+        mimeType: file.type || "text/csv",
+        dataUrl: e.target.result
+      });
+
+      const box = document.getElementById("loaderValidateResult");
+      const importBtn = document.getElementById("loaderImportBtn");
+
+      if (!res.success) {
+        if (box) box.innerHTML = `<div class="empty">${UI.esc(res.message || "Validasi gagal")}</div>`;
+        if (importBtn) importBtn.style.display = "none";
+        return;
+      }
+
+      const d = res.data || {};
+      window.__JG_SIGAP_LOADER_VALID_ROWS = d.rows || [];
+
+      if (!d.valid) {
+        if (box) {
+          box.innerHTML = `
+            <div class="empty">
+              <b>Validasi gagal.</b><br>
+              Missing header: ${UI.esc((d.missing_headers || []).join(", ") || "-")}<br>
+              Extra header: ${UI.esc((d.extra_headers || []).join(", ") || "-")}<br>
+              Total error isi data: ${UI.esc((d.validation_summary && d.validation_summary.total_errors) || 0)}
+            </div>
+            ${renderValidationMessages(d.validation_errors || [], "Error")}
+            ${renderValidationMessages(d.validation_warnings || [], "Warning")}
+          `;
+        }
+        if (importBtn) importBtn.style.display = "none";
+        return;
+      }
+
+      if (box) {
+        box.innerHTML = `
+          <div class="empty" style="background:#ecfdf5;border-color:#bbf7d0;color:#166534">
+            <b>Validasi berhasil.</b><br>
+            Target: ${UI.esc(d.target_sheet)}<br>
+            Delimiter terdeteksi: ${UI.esc(d.delimiter || '-') }<br>
+            Total data: ${UI.esc(d.total_rows)}
+          </div>
+          ${renderValidationMessages(d.validation_warnings || [], "Warning")}${renderPreviewTable(d.preview || [])}
+        `;
+      }
+
+      if (importBtn) importBtn.style.display = "inline-flex";
+    };
+
+    reader.readAsDataURL(file);
+  }
+
+  async function processLoaderImport(loaderId) {
+    const rows = window.__JG_SIGAP_LOADER_VALID_ROWS || [];
+    if (!rows.length) {
+      alert("Tidak ada data valid untuk diimport.");
+      return;
+    }
+
+    if (!confirm("Proses import " + rows.length + " baris data?")) return;
+
+    const res = await Core.api("importLoaderData", {
+      loader_id: loaderId,
+      rows: rows
+    });
+
+    alert(res.message || (res.success ? "Import selesai" : "Import gagal"));
+    if (res.success) {
+      UI.closeModal();
+      PageRuntime.init("loader");
+    }
+  }
+
+  async function openLoaderTemplate(loaderId) {
+    const res = await Core.api("getLoaderTemplate", { loader_id: loaderId });
+
+    if (!res.success) {
+      alert(res.message || "Template gagal dibuat");
+      return;
+    }
+
+    const d = res.data || {};
+    downloadTextFile(d.file_name || "template.csv", d.csv || "", d.mime_type || "text/csv");
+  }
+
+  function downloadTextFile(fileName, content, mimeType) {
+    const blob = new Blob([content], { type: mimeType + ";charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 300);
+  }
+
+
+  function renderValidationMessages(items, title) {
+    if (!items || !items.length) return "";
+    return `
+      <div class="table-wrap" style="max-height:220px;margin-top:12px">
+        <table class="table">
+          <thead><tr><th>${UI.esc(title)}</th><th>Row</th><th>Key</th><th>Pesan</th></tr></thead>
+          <tbody>
+            ${items.slice(0, 50).map(x => `
+              <tr>
+                <td>${UI.esc(title)}</td>
+                <td>${UI.esc(x.row || "-")}</td>
+                <td>${UI.esc(x.key || "-")}</td>
+                <td>${UI.esc((x.messages || []).join(" | "))}</td>
+              </tr>
+            `).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+  function renderPreviewTable(rows) {
+    if (!rows.length) return `<div class="empty">Tidak ada preview data.</div>`;
+    const cols = Object.keys(rows[0]).slice(0, 8);
+    return `
+      <div class="table-wrap" style="max-height:260px;margin-top:12px">
+        <table class="table">
+          <thead><tr>${cols.map(c => `<th>${UI.esc(c)}</th>`).join("")}</tr></thead>
+          <tbody>
+            ${rows.map(r => `<tr>${cols.map(c => `<td>${UI.esc(r[c])}</td>`).join("")}</tr>`).join("")}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
+
+
+
+
+  function setText(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = value;
+  }
+
+  async function loadUserManagement() {
+    const body = document.getElementById("userTableBody");
+
+    try {
+      const searchEl = document.getElementById("userSearchInput");
+      const res = await Core.api("getUserManagementInit", { search: searchEl ? searchEl.value : "" });
+
+      if (!res.success) {
+        if (body) body.innerHTML = `<tr><td colspan="8"><div class="empty">${UI.esc(res.message || "Gagal memuat user")}</div></td></tr>`;
+        return;
+      }
+
+      const users = (res.data && res.data.users) || [];
+      const roles = (res.data && res.data.roles) || [];
+      const q = searchEl ? String(searchEl.value || "").toLowerCase() : "";
+      const filtered = q ? users.filter(u => JSON.stringify(u).toLowerCase().indexOf(q) !== -1) : users;
+
+      setText("userTotal", users.length);
+      setText("userActive", users.filter(u => String(u.is_active) === "1" || String(u.is_active).toUpperCase() === "TRUE" || String(u.is_active).toUpperCase() === "AKTIF").length);
+      setText("roleTotal", roles.length);
+
+      if (body) {
+        body.innerHTML = filtered.map(u => `
+          <tr>
+            <td>${UI.esc(u.user_id)}</td>
+            <td>${UI.esc(u.username)}</td>
+            <td>${UI.esc(u.full_name)}</td>
+            <td>${UI.esc(u.nik)}</td>
+            <td>${UI.esc(u.department_id)}</td>
+            <td>${UI.esc(u.roles)}</td>
+            <td>${UI.badge(Number(u.is_active || 0) === 1 || String(u.is_active).toUpperCase() === "TRUE" || String(u.is_active).toUpperCase() === "AKTIF" ? "AKTIF" : "NONAKTIF")}</td>
+          </tr>
+        `).join("") || `<tr><td colspan="8"><div class="empty">Data user belum ada di 01_M_USER.</div></td></tr>`;
+      }
+    } catch (err) {
+      if (body) body.innerHTML = `<tr><td colspan="8"><div class="empty">Error load Management User: ${UI.esc(err.message || err)}</div></td></tr>`;
+      console.error(err);
+    }
+  }
+
+  async function openAddUserModal() {
+    const init = await Core.api("getUserManagementInit", {});
+    const roles = (init.data && init.data.roles) || [];
+    UI.openModal("Tambah User Baru", `
+      <div class="field">
+        <label>Cari NIK / Nama / Email Karyawan</label>
+        <input id="employeeSearchInput" placeholder="Ketik minimal 2 karakter..." onkeyup="App.searchEmployeeForUser(this.value)">
+        <div id="employeeSearchResult" class="search-result-box"></div>
+      </div>
+      <input type="hidden" id="newUserEmployeeId">
+      <div class="grid grid-2">
+        <div class="field"><label>Employee ID</label><input id="newUserEmployeeIdDisplay" disabled></div>
+        <div class="field"><label>NIK</label><input id="newUserNik" disabled></div>
+        <div class="field"><label>Nama Lengkap</label><input id="newUserFullName" disabled></div>
+        <div class="field"><label>Username / Email</label><input id="newUserEmail" disabled></div>
+        <div class="field"><label>Department</label><input id="newUserDepartment" disabled></div>
+        <div class="field"><label>Role</label><select id="newUserRole"><option value="">Pilih Role</option>${roles.map(r => `<option value="${UI.esc(r.role_id)}">${UI.esc(r.role_code)} - ${UI.esc(r.role_name)}</option>`).join("")}</select></div>
+        <div class="field"><label>Password Awal</label><input id="newUserPassword" type="password" value="123456"></div>
+        <div class="field"><label>Status</label><select id="newUserActive"><option value="1">Aktif</option><option value="0">Nonaktif</option></select></div>
+      </div>`,
+      `<button class="btn" onclick="UI.closeModal()">Batal</button><button class="btn primary" onclick="App.saveNewUser()">Simpan User</button>`);
+  }
+
+  async function searchEmployeeForUser(q) {
+    const box = document.getElementById("employeeSearchResult");
+    if (!box) return;
+
+    try {
+      if (!q || q.length < 2) {
+        box.innerHTML = `<div class="empty">Ketik minimal 2 karakter.</div>`;
+        return;
+      }
+
+      const res = await Core.api("searchEmployeesForUser", { q: q, limit: 20 });
+      if (!res.success) {
+        box.innerHTML = `<div class="empty">${UI.esc(res.message || "Gagal mencari employee")}</div>`;
+        return;
+      }
+
+      const rows = res.data || [];
+      setText("employeeResultTotal", rows.length);
+
+      box.innerHTML = rows.map(e => `
+        <div class="search-result-item" onclick='App.selectEmployeeForUser(${JSON.stringify(e).replace(/'/g, "&#039;")})'>
+          <b>${UI.esc(e.full_name || "-")}</b>
+          <small>${UI.esc(e.nik || "-")} | ${UI.esc(e.email || "-")} | ${UI.esc(e.department_id || "-")}</small>
+        </div>
+      `).join("") || `<div class="empty">Karyawan tidak ditemukan di 04_M_EMPLOYEE.</div>`;
+    } catch (err) {
+      box.innerHTML = `<div class="empty">Error cari employee: ${UI.esc(err.message || err)}</div>`;
+      console.error(err);
+    }
+  }
+
+  function selectEmployeeForUser(e) {
+    document.getElementById("newUserEmployeeId").value = e.employee_id || "";
+    document.getElementById("newUserEmployeeIdDisplay").value = e.employee_id || "";
+    document.getElementById("newUserNik").value = e.nik || "";
+    document.getElementById("newUserFullName").value = e.full_name || "";
+    document.getElementById("newUserEmail").value = e.email || "";
+    document.getElementById("newUserDepartment").value = e.department_id || "";
+    const box = document.getElementById("employeeSearchResult");
+    if (box) box.innerHTML = `<div class="empty" style="background:#ecfdf5;border-color:#bbf7d0;color:#166534">Karyawan dipilih: ${UI.esc(e.full_name)}</div>`;
+  }
+
+  async function saveNewUser() {
+    const payload = {
+      employee_id: document.getElementById("newUserEmployeeId").value,
+      role_id: document.getElementById("newUserRole").value,
+      password: document.getElementById("newUserPassword").value,
+      is_active: document.getElementById("newUserActive").value
+    };
+    const res = await Core.api("createUser", payload);
+    if (!res.success) { alert(res.message || "Gagal membuat user"); return; }
+    alert(res.message || "Akun user berhasil dibuat.");
+    UI.closeModal();
+    loadUserManagement();
+  }
+
+
+
+
+
+  function runServerFunctionV76(functionName, payload) {
+    return new Promise((resolve) => {
+      try {
+        google.script.run
+          .withSuccessHandler((res) => resolve(res))
+          .withFailureHandler((err) => resolve({ success:false, message: err && err.message ? err.message : String(err) }))
+          [functionName](payload || {});
+      } catch (err) {
+        resolve({ success:false, message: err.message || String(err) });
+      }
+    });
+  }
+
+  function fpbListServerV80(payload) {
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler((res) => resolve(res || { success:false, message:"Server return null dari fpbListDirectV79" }))
+        .withFailureHandler((err) => resolve({ success:false, message: err && err.message ? err.message : String(err) }))
+        .fpbListDirectV79(payload || {});
+    });
+  }
+
+  function fpbInitServerV80(payload) {
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler((res) => resolve(res || { success:false, message:"Server return null dari fpbInitDirectV79" }))
+        .withFailureHandler((err) => resolve({ success:false, message: err && err.message ? err.message : String(err) }))
+        .fpbInitDirectV79(payload || {});
+    });
+  }
+
+  function fpbCreateServerV80(payload) {
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler((res) => resolve(res || { success:false, message:"Server return null dari fpbCreateDirectV79" }))
+        .withFailureHandler((err) => resolve({ success:false, message: err && err.message ? err.message : String(err) }))
+        .fpbCreateDirectV79(payload || {});
+    });
+  }
+
+  function fpbSearchRequesterServerV80(payload) {
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler((res) => resolve(res || { success:false, message:"Server return null dari fpbSearchRequesterDirectV79", data:[] }))
+        .withFailureHandler((err) => resolve({ success:false, message: err && err.message ? err.message : String(err), data:[] }))
+        .fpbSearchRequesterDirectV79(payload || {});
+    });
+  }
+
+  function fpbPreviewNoServerV80(payload) {
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler((res) => resolve(res || { success:false, message:"Server return null dari fpbPreviewNoDirectV79" }))
+        .withFailureHandler((err) => resolve({ success:false, message: err && err.message ? err.message : String(err) }))
+        .fpbPreviewNoDirectV79(payload || {});
+    });
+  }
+
+
+
+  function fpbDetailServerV83(payload) {
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler((res) => resolve(res || { success:false, message:"Server return null dari fpbDetailDirectV83" }))
+        .withFailureHandler((err) => resolve({ success:false, message: err && err.message ? err.message : String(err) }))
+        .fpbDetailDirectV83(payload || {});
+    });
+  }
+
+
+  async function loadFPB() {
+    const body = document.getElementById("fpbTableBody");
+
+    try {
+      const q = document.getElementById("fpbSearchInput");
+      const payload = { search: q ? q.value : "" };
+
+      // V7.8: gunakan global server function langsung, karena server test FPBService.list sudah sukses.
+      let res = await fpbListServerV80(payload);
+
+      // Fallback lama tetap disediakan.
+      if (!res || !res.success) {
+        const apiRes = await Core.api("listFPB", payload);
+        if (apiRes && apiRes.success) res = apiRes;
+      }
+
+      if (!res || !res.success) {
+        const msg = res && res.message ? res.message : "Gagal memuat FPB dari server.";
+        if (body) body.innerHTML = `<tr><td colspan="8"><div class="empty">${UI.esc(msg)}</div></td></tr>`;
+        return;
+      }
+
+      const rows = res.data || [];
+
+      setText("fpbTotal", rows.length);
+      setText("fpbDraft", rows.filter(r => String(r.status).toUpperCase() === "DRAFT").length);
+      setText("fpbSubmitted", rows.filter(r => String(r.status).toUpperCase() === "SUBMITTED").length);
+      setText("fpbApproved", rows.filter(r => String(r.status).toUpperCase() === "APPROVED").length);
+
+      if (body) {
+        body.innerHTML = rows.map(r => `
+          <tr>
+            <td><a href="javascript:void(0)" class="link" onclick="App.openFPBDetailModal(\'${UI.esc(r.fpb_id || "")}\', \'${UI.esc(r.fpb_no || "")}\')">${UI.esc(r.fpb_no || r.fpb_id || "-")}</a></td>
+            <td>${UI.esc(formatDateOnly(r.fpb_date))}</td>
+            <td>${UI.esc(r.requester_label || r.requester_name || r.requester_id || "-")}</td>
+            <td>${UI.esc(r.department_label || r.department_name || r.department_id || "-")}</td>
+            <td>${UI.esc(r.company_label || r.company_name || r.company_id || "-")}</td>
+            <td>${UI.badge(r.priority || "NORMAL")}</td>
+            <td>${UI.esc(r.purpose || "-")}</td>
+            <td>${UI.badge(r.status || "DRAFT")}</td>
+          </tr>
+        `).join("") || `<tr><td colspan="8"><div class="empty">Data FPB belum ada.</div></td></tr>`;
+      }
+    } catch (err) {
+      if (body) body.innerHTML = `<tr><td colspan="8"><div class="empty">Error load FPB: ${UI.esc(err.message || err)}</div></td></tr>`;
+      console.error(err);
+    }
+  }
+
+
+
+  async function openFPBDetailModal(fpbId, fpbNo) {
+    const res = await fpbDetailServerV83({ fpb_id: fpbId, fpb_no: fpbNo });
+
+    if (!res || !res.success) {
+      alert((res && res.message) || "Gagal memuat detail FPB");
+      return;
+    }
+
+    const data = res.data || {};
+    const h = data.header || {};
+    const items = data.details || [];
+    const s = data.summary || {};
+
+    UI.openModal(
+      "Detail FPB - " + (h.fpb_no || h.fpb_id || ""),
+      `
+        <div class="detail-section">
+          <h3>Informasi Header</h3>
+          <div class="detail-grid">
+            <div><span>Nomor FPB</span><b>${UI.esc(h.fpb_no || "-")}</b></div>
+            <div><span>Tanggal FPB</span><b>${UI.esc(formatDateOnly(h.fpb_date))}</b></div>
+            <div><span>Requester</span><b>${UI.esc(h.requester_label || h.requester_name || h.requester_id || "-")}</b></div>
+            <div><span>Department</span><b>${UI.esc(h.department_label || h.department_name || h.department_id || "-")}</b></div>
+            <div><span>Company</span><b>${UI.esc(h.company_label || h.company_name || h.company_id || "-")}</b></div>
+            <div><span>Cost Center</span><b>${UI.esc(h.cost_center_id || "-")}</b></div>
+            <div><span>Priority</span><b>${UI.esc(h.priority || "-")}</b></div>
+            <div><span>Status</span><b>${UI.esc(h.status || "-")}</b></div>\n            <div><span>E-sign Requester</span><b>${h.requester_esign_url ? `<a class="link" target="_blank" href="${UI.esc(h.requester_esign_url)}">Lihat tanda tangan</a>` : UI.esc(h.requester_esign_id || h.requester_esign || "-")}</b></div>
+          </div>
+
+          <div class="field" style="margin-top:12px">
+            <label>Keperluan / Tujuan</label>
+            <div class="readonly-box">${UI.esc(h.purpose || "-")}</div>
+          </div>
+        </div>
+
+        <div class="detail-section" style="margin-top:14px">
+          <h3>Ringkasan Item</h3>
+          <div class="grid grid-3">
+            <div class="mini-stat"><span>Total Item</span><b>${UI.esc(s.item_count || 0)}</b></div>
+            <div class="mini-stat"><span>Total Qty</span><b>${UI.esc(s.total_qty || 0)}</b></div>
+            <div class="mini-stat"><span>Estimasi Total</span><b>${formatCurrency(s.total_amount || 0)}</b></div>
+          </div>
+        </div>
+
+        <div class="detail-section" style="margin-top:14px">
+          <h3>List Item FPB</h3>
+          <div class="table-wrap">
+            <table class="table">
+              <thead>
+                <tr>
+                  <th>No</th>
+                  <th>Item</th>
+                  <th>Kategori</th>
+                  <th>Deskripsi</th>
+                  <th>Qty</th>
+                  <th>UOM</th>
+                  <th>Estimasi Harga</th>
+                  <th>Estimasi Total</th>
+                  <th>Keterangan</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${items.map(i => `
+                  <tr>
+                    <td>${UI.esc(i.no)}</td>
+                    <td>${UI.esc(i.item_name || "-")}</td>
+                    <td>${UI.esc(i.category_id || "-")}</td>
+                    <td>${UI.esc(i.item_description || "-")}</td>
+                    <td>${UI.esc(i.qty || 0)}</td>
+                    <td>${UI.esc(i.uom || "-")}</td>
+                    <td>${formatCurrency(i.estimated_price || 0)}</td>
+                    <td>${formatCurrency(i.estimated_total || 0)}</td>
+                    <td>${UI.esc(i.remarks || "-")}</td>
+                  </tr>
+                `).join("") || `<tr><td colspan="9"><div class="empty">Item FPB belum ada.</div></td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="detail-section" style="margin-top:14px">
+          <h3>Lampiran PDF</h3>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>No</th><th>File</th><th>Kategori</th><th>Upload</th><th>Aksi</th></tr></thead>
+              <tbody>
+                ${(data.attachments || []).map((a,idx)=>`
+                  <tr>
+                    <td>${idx+1}</td>
+                    <td>${UI.esc(a.file_name || "-")}</td>
+                    <td>${UI.esc(a.attachment_category || "-")}</td>
+                    <td>${UI.esc(a.uploaded_at || "-")}</td>
+                    <td>${a.file_url ? `<a class="link" target="_blank" href="${UI.esc(a.file_url)}">Buka PDF</a>` : "-"}</td>
+                  </tr>
+                `).join("") || `<tr><td colspan="5"><div class="empty">Lampiran belum ada.</div></td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="detail-section" style="margin-top:14px">
+          <h3>Alur Approval & E-sign</h3>
+          <div class="table-wrap">
+            <table class="table">
+              <thead><tr><th>Level</th><th>Step</th><th>Role</th><th>Status</th><th>Tanggal</th><th>Catatan</th></tr></thead>
+              <tbody>
+                ${(data.approvals || []).map(a=>`
+                  <tr>
+                    <td>${UI.esc(a.approval_level || "-")}</td>
+                    <td>${UI.esc(a.step_code || "-")}</td>
+                    <td>${UI.esc(a.approver_role || "-")}</td>
+                    <td>${UI.badge(a.approval_status || "PENDING")}</td>
+                    <td>${UI.esc(a.approval_date || "-")}</td>
+                    <td>${UI.esc(a.remarks || "-")}</td>
+                  </tr>
+                `).join("") || `<tr><td colspan="6"><div class="empty">Approval belum ada.</div></td></tr>`}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      `,
+      `<button class="btn primary" onclick="UI.closeModal()">Tutup</button>`
+    );
+  }
+
+  function formatCurrency(value) {
+    const n = Number(value || 0);
+    try {
+      return n.toLocaleString("id-ID", { style:"currency", currency:"IDR", maximumFractionDigits:0 });
+    } catch (err) {
+      return "Rp " + n.toLocaleString("id-ID");
+    }
+  }
+
+async function openAddFPBModal() {
+    let init = await fpbInitServerV80({});
+    if (!init || !init.success) init = await Core.api("getFPBInit", {});
+    if (!init.success) { alert(init.message || "Gagal memuat data FPB"); return; }
+
+    const d = init.data || {};
+    const departments = d.departments || [];
+    const uoms = d.uoms || [];
+
+    UI.openModal("Tambah FPB Baru", `
+      <div class="fpb-modal-compact">
+      <div class="grid grid-2 fpb-compact-grid">
+        <div class="field">
+          <label>Cari Requester</label>
+          <input id="fpbRequesterSearch" placeholder="Ketik minimal 2 karakter NIK / nama / email..." onkeyup="App.searchFPBRequester(this.value)">
+          <input type="hidden" id="fpbRequester">
+          <div id="fpbRequesterSelected" class="empty">Belum ada requester dipilih.</div>
+          <div id="fpbRequesterResult" class="search-result-box"></div>
+        </div>
+
+        <div class="field">
+          <label>Nomor FPB</label>
+          <input id="fpbNo" placeholder="Kosongkan untuk nomor otomatis" oninput="App.previewFPBNo()">
+          <small id="fpbNoPreview" style="display:block;color:#64748b;margin-top:6px">Nomor otomatis akan muncul setelah requester dipilih.</small>
+        </div>
+
+        <div class="field">
+          <label>Department</label>
+          <select id="fpbDepartment" onchange="App.previewFPBNo()">
+            <option value="">Pilih Department</option>
+            ${departments.map(x=>`<option value="${UI.esc(x.id)}">${UI.esc(x.id)} - ${UI.esc(x.name)}</option>`).join("")}
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Company</label>
+          <input type="hidden" id="fpbCompany">
+          <div id="fpbCompanyDisplay" class="readonly-box">Company akan otomatis mengikuti requester.</div>
+          <small style="display:block;color:#64748b;margin-top:6px">Company tidak dipilih manual. Relasi diambil dari data employee requester.</small>
+        </div>
+
+        <div class="field"><label>Tanggal FPB</label><input id="fpbDate" type="date" value="${todayValue()}" onchange="App.previewFPBNo()"></div>
+
+        <div class="field">
+          <label>Priority</label>
+          <select id="fpbPriority">
+            <option value="NORMAL">NORMAL</option>
+            <option value="URGENT">URGENT</option>
+            <option value="HIGH">HIGH</option>
+            <option value="LOW">LOW</option>
+          </select>
+        </div>
+
+        <div class="field">
+          <label>Status Awal</label>
+          <select id="fpbStatus">
+            <option value="DRAFT">DRAFT</option>
+            <option value="SUBMITTED">SUBMITTED</option>
+          </select>
+        </div>
+
+        <div class="field fpb-esign-field">
+          <label>E-sign Requester</label>
+          <input type="hidden" id="fpbRequesterEsignId">
+          <input type="hidden" id="fpbRequesterEsignUrl">
+          <input type="hidden" id="fpbRequesterEsign">
+          <div id="fpbEsignBox" class="esign-box empty">Pilih requester untuk memuat tanda tangan.</div>
+          <div class="fpb-esign-actions">
+            <button type="button" class="btn" onclick="App.openEsignPadV88()">Buat / Ganti Tanda Tangan</button>
+            <label class="btn" style="cursor:pointer">Upload PNG
+              <input type="file" accept="image/png,.png" style="display:none" onchange="App.uploadEsignPngV88(this)">
+            </label>
+          </div>
+          <small class="compact-help">Tanda tangan tersimpan per employee.</small>
+        </div>
+      </div>
+
+      <div class="fpb-approval-note">Alur approval: Requester E-sign → Pimpinan Requester → Pimpinan GA</div>
+
+      <div class="field">
+        <label>Keperluan / Tujuan</label>
+        <textarea id="fpbPurpose" rows="3" placeholder="Contoh: Pengadaan kebutuhan operasional GA..."></textarea>
+      </div>
+
+      <div class="field">
+        <label>Lampiran Pengajuan PDF</label>
+        <input id="fpbAttachmentPdf" type="file" accept="application/pdf,.pdf">
+        <small style="display:block;color:#64748b;margin-top:6px">Wajib upload PDF pengajuan. File akan disimpan ke Drive dan dicatat ke 78_T_DOCUMENT_ATTACHMENT.</small>
+      </div>
+
+      <div class="card card-pad fpb-detail-card">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+          <h3 style="margin:0">Detail Barang / Jasa</h3>
+          <button class="btn primary" onclick="App.addFPBDetailRow()">+ Tambah Detail</button>
+        </div>
+        <div class="table-wrap">
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Item</th>
+                <th>Spesifikasi</th>
+                <th>Qty</th>
+                <th>UOM</th>
+                <th>Estimasi Harga</th>
+                <th>Keterangan</th>
+                <th></th>
+              </tr>
+            </thead>
+            <tbody id="fpbDetailRows"></tbody>
+          </table>
+        </div>
+      </div>
+      </div>`,
+      `<button class="btn" onclick="UI.closeModal()">Batal</button><button class="btn primary" onclick="App.saveFPB()">Simpan FPB</button>`);
+
+    const fpbModalEl = document.querySelector("#modalBackdrop .modal");
+    if (fpbModalEl) fpbModalEl.classList.add("modal-fpb-compact");
+
+    window.__JG_SIGAP_FPB_UOMS = uoms;
+    addFPBDetailRow();
+  }
+
+
+  async function searchFPBRequester(q) {
+    const box = document.getElementById("fpbRequesterResult");
+    if (!box) return;
+
+    if (!q || q.length < 2) {
+      box.innerHTML = `<div class="empty">Ketik minimal 2 karakter.</div>`;
+      return;
+    }
+
+    try {
+      let res = await fpbSearchRequesterServerV80({ q: q, limit: 20 });
+      if (!res || !res.success) res = await Core.api("searchFPBRequester", { q: q, limit: 20 });
+
+      if (!res.success) {
+        box.innerHTML = `<div class="empty">${UI.esc(res.message || "Gagal mencari requester")}</div>`;
+        return;
+      }
+
+      const rows = res.data || [];
+
+      box.innerHTML = rows.map(e => `
+        <div class="search-result-item" onclick='App.selectFPBRequester(${JSON.stringify(e).replace(/'/g, "&#039;")})'>
+          <b>${UI.esc(e.full_name || "-")}</b>
+          <small>${UI.esc(e.nik || "-")} | ${UI.esc(e.employee_id || "-")} | ${UI.esc(e.email || "-")} | ${UI.esc(e.department_id || "-")}</small>
+        </div>
+      `).join("") || `<div class="empty">Requester tidak ditemukan.</div>`;
+    } catch (err) {
+      box.innerHTML = `<div class="empty">Error cari requester: ${UI.esc(err.message || err)}</div>`;
+    }
+  }
+
+  function selectFPBRequester(e) {
+    const req = document.getElementById("fpbRequester");
+    const selected = document.getElementById("fpbRequesterSelected");
+    const result = document.getElementById("fpbRequesterResult");
+    const search = document.getElementById("fpbRequesterSearch");
+    const deptEl = document.getElementById("fpbDepartment");
+    const compEl = document.getElementById("fpbCompany");
+    if (req) req.value = e.employee_id || "";
+    if (search) search.value = `${e.full_name || ""} - ${e.nik || ""}`;
+    if (selected) {
+      selected.innerHTML = `<b>${UI.esc(e.full_name || "-")}</b><br><small>${UI.esc(e.nik || "-")} | ${UI.esc(e.employee_id || "-")} | ${UI.esc(e.email || "-")}</small><br><small>Dept: ${UI.esc(e.department_code || e.department_id || "-")} | Company: ${UI.esc(e.company_code || e.company_id || "-")}</small>`;
+      selected.style.background = "#ecfdf5";
+      selected.style.borderColor = "#bbf7d0";
+      selected.style.color = "#166534";
+    }
+    if (deptEl && e.department_id) deptEl.value = e.department_id;
+    if (compEl && e.company_id) compEl.value = e.company_id;
+
+    const compDisplay = document.getElementById("fpbCompanyDisplay");
+    if (compDisplay) {
+      const code = e.company_code || e.company_id || "-";
+      const name = e.company_name || "";
+      compDisplay.innerHTML = `<b>${UI.esc(code)}</b>${name && name !== code ? " - " + UI.esc(name) : ""}`;
+      compDisplay.style.background = "#ecfdf5";
+      compDisplay.style.borderColor = "#bbf7d0";
+      compDisplay.style.color = "#166534";
+    }
+
+    if (result) result.innerHTML = "";
+    loadRequesterEsignV88(e.employee_id);
+    previewFPBNo();
+  }
+
+  async function previewFPBNo() {
+    const noEl = document.getElementById("fpbNo");
+    const preview = document.getElementById("fpbNoPreview");
+    const dept = document.getElementById("fpbDepartment");
+    const comp = document.getElementById("fpbCompany");
+    const date = document.getElementById("fpbDate");
+    if (!preview) return;
+    if (noEl && noEl.value.trim()) { preview.textContent = "Nomor custom: " + noEl.value.trim(); return; }
+    if (!dept || !dept.value || !comp || !comp.value) { preview.textContent = "Nomor otomatis akan muncul setelah department dan company terisi."; return; }
+    let res = await fpbPreviewNoServerV80({ department_id: dept.value, company_id: comp.value, fpb_date: date ? date.value : "" });
+    if (!res || !res.success) res = await Core.api("previewFPBNo", { department_id: dept.value, company_id: comp.value, fpb_date: date ? date.value : "" });
+    preview.textContent = res.success && res.data ? "Nomor otomatis: " + res.data.fpb_no : (res.message || "Gagal render nomor otomatis.");
+  }
+
+
+  function onFPBRequesterChange() {
+    // Backward compatibility jika masih ada select lama.
+  }
+
+function addFPBDetailRow() {
+    const tbody = document.getElementById("fpbDetailRows");
+    if (!tbody) return;
+    const uoms = window.__JG_SIGAP_FPB_UOMS || [];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><input data-fpb-detail="item_name" placeholder="Nama barang/jasa"></td>
+      <td><input data-fpb-detail="item_description" placeholder="Spesifikasi"></td>
+      <td><input data-fpb-detail="qty" type="number" min="0" step="0.01" value="1"></td>
+      <td>
+        <select data-fpb-detail="uom">
+          <option value="">Pilih UOM</option>
+          ${uoms.map(x=>`<option value="${UI.esc(x.id)}">${UI.esc(x.id)} - ${UI.esc(x.name)}</option>`).join("")}
+        </select>
+      </td>
+      <td><input data-fpb-detail="estimated_price" type="number" min="0" step="0.01" value="0"></td>
+      <td><input data-fpb-detail="remarks" placeholder="Keterangan"></td>
+      <td><button class="btn danger" onclick="this.closest('tr').remove()">Hapus</button></td>`;
+    tbody.appendChild(tr);
+  }
+
+
+  function collectFPBDetails() {
+    return Array.from(document.querySelectorAll("#fpbDetailRows tr")).map(tr => {
+      const obj = {};
+      tr.querySelectorAll("[data-fpb-detail]").forEach(el => obj[el.getAttribute("data-fpb-detail")] = el.value);
+      return obj;
+    }).filter(r => String(r.item_name || "").trim() !== "");
+  }
+
+
+
+  async function loadRequesterEsignV88(employeeId) {
+    const box = document.getElementById("fpbEsignBox");
+    if (!box) return;
+    window.__JG_SIGAP_SELECTED_REQUESTER_ID = employeeId || document.getElementById("fpbRequester")?.value || "";
+    document.getElementById("fpbRequesterEsignId").value = "";
+    document.getElementById("fpbRequesterEsignUrl").value = "";
+    document.getElementById("fpbRequesterEsign").value = "";
+
+    if (!employeeId) {
+      box.className = "esign-box empty";
+      box.innerHTML = "Pilih requester untuk memuat tanda tangan.";
+      return;
+    }
+
+    box.className = "esign-box loading";
+    box.innerHTML = "Memuat e-sign requester...";
+    const res = await getEmployeeEsignServerV88({ employee_id: employeeId });
+
+    if (res && res.success && res.found && res.data) {
+      setSelectedEsignV88(res.data);
+    } else {
+      box.className = "esign-box empty";
+      box.innerHTML = `<b>Belum ada tanda tangan tersimpan.</b><small>Buat tanda tangan di sistem atau upload PNG transparan.</small>`;
+    }
+  }
+
+
+  function loadRequesterEsignV90() {
+    const employeeId = document.getElementById("fpbRequester")?.value || window.__JG_SIGAP_SELECTED_REQUESTER_ID || "";
+    return loadRequesterEsignV88(employeeId);
+  }
+
+
+
+  function openEsignFileV97(url) {
+    if (!url) {
+      alert("File tanda tangan belum tersedia.");
+      return;
+    }
+
+    if (String(url).startsWith("data:image")) {
+      const w = window.open("", "_blank");
+      if (!w) {
+        alert("Popup diblokir browser. Izinkan popup untuk membuka tanda tangan.");
+        return;
+      }
+      w.document.write(`
+        <html>
+          <head><title>E-sign</title></head>
+          <body style="margin:0;display:flex;align-items:center;justify-content:center;min-height:100vh;background:#f8fafc">
+            <img src="${url}" style="max-width:90vw;max-height:80vh;border:1px solid #e2e8f0;border-radius:12px;background:white;padding:16px">
+          </body>
+        </html>
+      `);
+      w.document.close();
+      return;
+    }
+
+    window.open(url, "_blank");
+  }
+
+
+  function setSelectedEsignV88(sign) {
+    const box = document.getElementById("fpbEsignBox");
+    if (!box) return;
+
+    sign = sign || {};
+
+    const fileUrl = sign.file_url || "";
+    const dataUrl = sign.file_data_url || "";
+    const fileId = sign.file_id || "";
+    const openUrl = fileUrl || dataUrl || "";
+
+    // Untuk preview gambar, jangan pakai halaman Drive biasa karena <img> tidak bisa render halaman /view.
+    // Prioritas preview:
+    // 1. file_data_url dari database
+    // 2. thumbnail Drive dari file_id
+    // 3. file_url hanya jika berupa data:image atau direct image URL.
+    let previewSrc = "";
+    if (dataUrl && String(dataUrl).startsWith("data:image")) {
+      previewSrc = dataUrl;
+    } else if (fileId && !String(fileId).startsWith("ESIGN-")) {
+      previewSrc = "https://drive.google.com/thumbnail?id=" + encodeURIComponent(fileId);
+    } else if (fileUrl && (String(fileUrl).startsWith("data:image") || String(fileUrl).match(/\.(png|jpg|jpeg|webp)(\?|$)/i))) {
+      previewSrc = fileUrl;
+    }
+
+    document.getElementById("fpbRequesterEsignId").value = sign.esign_id || "";
+    document.getElementById("fpbRequesterEsignUrl").value = openUrl;
+    document.getElementById("fpbRequesterEsign").value = sign.esign_id || openUrl || "SIGNED";
+
+    const preview = previewSrc
+      ? `<img class="esign-preview-img" src="${UI.esc(previewSrc)}" alt="E-sign" onerror="this.style.display='none'">`
+      : `<div class="esign-preview-empty">Preview belum tersedia</div>`;
+
+    box.className = "esign-box active";
+    box.innerHTML = `
+      <div class="esign-compact-row">
+        ${preview}
+        <div class="esign-compact-info">
+          <b>E-sign aktif</b>
+          <small>${UI.esc(sign.employee_name || sign.file_name || sign.esign_id || "")}</small>
+        </div>
+        ${openUrl ? `<button type="button" class="btn compact-btn" onclick="App.openEsignFileV97(\`${openUrl}\`)">Lihat</button>` : ""}
+      </div>
+    `;
+  }
+
+  function openEsignPadV88() {
+    const employeeId = document.getElementById("fpbRequester")?.value || window.__JG_SIGAP_SELECTED_REQUESTER_ID || "";
+    const box = document.getElementById("fpbEsignBox");
+
+    if (!employeeId) {
+      alert("Pilih requester terlebih dahulu.");
+      return;
+    }
+
+    if (!box) {
+      alert("Box e-sign tidak ditemukan. Silakan buka ulang modal Tambah FPB.");
+      return;
+    }
+
+    window.__JG_SIGAP_ESIGN_EMPLOYEE_ID = employeeId;
+
+    box.className = "esign-box active";
+    box.style.display = "block";
+    box.innerHTML = `
+      <div style="margin-bottom:8px">
+        <b>Buat tanda tangan requester</b>
+        <small>Gambar tanda tangan di bawah. Background PNG akan transparan.</small>
+      </div>
+      <canvas id="esignCanvasV88" width="620" height="170" class="esign-canvas"></canvas>
+      <div style="display:flex;gap:8px;margin-top:10px;flex-wrap:wrap">
+        <button type="button" class="btn" onclick="App.clearEsignCanvasV88()">Bersihkan</button>
+        <button type="button" class="btn primary" onclick="App.saveEsignCanvasV88()">Simpan Tanda Tangan</button>
+        <button type="button" class="btn" onclick="App.loadRequesterEsignV90()">Batal</button>
+      </div>
+    `;
+
+    setTimeout(initEsignCanvasV88, 50);
+  }
+
+
+  function initEsignCanvasV88() {
+    const canvas = document.getElementById("esignCanvasV88");
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    ctx.lineWidth = 3; ctx.lineCap = "round"; ctx.strokeStyle = "#111827";
+    let drawing = false;
+    function pos(e){ const r=canvas.getBoundingClientRect(); const t=e.touches&&e.touches[0]?e.touches[0]:e; return {x:(t.clientX-r.left)*(canvas.width/r.width), y:(t.clientY-r.top)*(canvas.height/r.height)}; }
+    function start(e){ drawing=true; const p=pos(e); ctx.beginPath(); ctx.moveTo(p.x,p.y); e.preventDefault(); }
+    function move(e){ if(!drawing) return; const p=pos(e); ctx.lineTo(p.x,p.y); ctx.stroke(); e.preventDefault(); }
+    function end(e){ drawing=false; e&&e.preventDefault&&e.preventDefault(); }
+    canvas.onmousedown=start; canvas.onmousemove=move; canvas.onmouseup=end; canvas.onmouseleave=end;
+    canvas.ontouchstart=start; canvas.ontouchmove=move; canvas.ontouchend=end;
+  }
+
+  function clearEsignCanvasV88() {
+    const canvas = document.getElementById("esignCanvasV88");
+    if (!canvas) return;
+    canvas.getContext("2d").clearRect(0,0,canvas.width,canvas.height);
+  }
+
+
+
+  function saveEmployeeEsignApiV95(payload) {
+    return new Promise((resolve) => {
+      let done = false;
+
+      const timer = setTimeout(() => {
+        if (!done) {
+          done = true;
+          resolve({
+            success: false,
+            message: "Timeout simpan e-sign via API V9.6. Server tidak merespons dalam 30 detik."
+          });
+        }
+      }, 30000);
+
+      Core.api("saveEmployeeEsignV95", payload || {})
+        .then((res) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve(res || { success:false, message:"API saveEmployeeEsignV95 return null" });
+        })
+        .catch((err) => {
+          if (done) return;
+          done = true;
+          clearTimeout(timer);
+          resolve({ success:false, message: err && err.message ? err.message : String(err) });
+        });
+    });
+  }
+
+
+  function esignCanvasToCompactDataUrlV93(canvas) {
+    // Kecilkan payload agar google.script.run tidak gagal kirim data URL.
+    const tmp = document.createElement("canvas");
+    tmp.width = 420;
+    tmp.height = 150;
+    const tctx = tmp.getContext("2d");
+    tctx.clearRect(0, 0, tmp.width, tmp.height);
+    tctx.drawImage(canvas, 0, 0, tmp.width, tmp.height);
+    return tmp.toDataURL("image/png");
+  }
+
+  async function saveEsignCanvasV88() {
+    const employeeId = document.getElementById("fpbRequester")?.value || window.__JG_SIGAP_ESIGN_EMPLOYEE_ID || window.__JG_SIGAP_SELECTED_REQUESTER_ID || "";
+    const canvas = document.getElementById("esignCanvasV88");
+    const box = document.getElementById("fpbEsignBox");
+
+    if (!employeeId) {
+      alert("Requester belum terbaca. Pilih requester ulang terlebih dahulu.");
+      return;
+    }
+
+    if (!canvas) {
+      alert("Canvas tanda tangan tidak ditemukan. Klik Buat / Ganti Tanda Tangan ulang.");
+      return;
+    }
+
+    const dataUrl = esignCanvasToCompactDataUrlV93(canvas);
+
+    if (box) {
+      box.className = "esign-box loading";
+      box.innerHTML = `
+        <div>
+          <b>Menyimpan tanda tangan via API V9.7...</b>
+          <small>Employee ID: ${UI.esc(employeeId)}</small>
+          <small>Ukuran data: ${dataUrl.length} karakter</small>
+        </div>
+      `;
+    }
+
+    let res;
+    try {
+      res = await saveEmployeeEsignApiV95({
+        employee_id: employeeId,
+        file_name: "esign_" + employeeId + ".png",
+        file_type: "image/png",
+        data_url: dataUrl,
+        sign_source: "DRAW_V97"
+      });
+    } catch (err) {
+      res = { success:false, message:"JS error saat simpan e-sign: " + (err && err.message ? err.message : String(err)) };
+    }
+
+    if (!res || !res.success) {
+      if (box) {
+        box.className = "esign-box empty";
+        box.innerHTML = `
+          <div>
+            <b>Gagal menyimpan tanda tangan.</b>
+            <small>${UI.esc((res && res.message) || "Error tidak diketahui")}</small>
+          </div>
+        `;
+      }
+      alert((res && res.message) || "Gagal menyimpan tanda tangan.");
+      return;
+    }
+
+    const sign = (res && res.data) || {};
+    setSelectedEsignV88({
+      esign_id: sign.esign_id || "",
+      employee_id: sign.employee_id || employeeId,
+      file_name: sign.file_name || ("esign_" + employeeId + ".png"),
+      file_url: sign.file_url || "",
+      file_id: sign.file_id || "",
+      file_data_url: sign.file_data_url || dataUrl,
+      save_status: sign.save_status || "DB_DATA_URL",
+      sign_source: "DRAW_V97"
+    });
+
+    alert((res.message || "Tanda tangan berhasil disimpan.") + "\nStatus: " + (sign.save_status || "DB_DATA_URL"));
+  }
+
+
+  function uploadEsignPngV88(input) {
+    const employeeId = document.getElementById("fpbRequester")?.value || window.__JG_SIGAP_SELECTED_REQUESTER_ID || "";
+    if (!employeeId) { alert("Pilih requester terlebih dahulu."); input.value=""; return; }
+    const file = input.files && input.files[0];
+    if (!file) return;
+    if (file.type !== "image/png" && !String(file.name || "").toLowerCase().endsWith(".png")) {
+      alert("File tanda tangan harus PNG, disarankan background transparan."); input.value=""; return;
+    }
+    const reader = new FileReader();
+    reader.onload = async () => {
+      const res = await saveEmployeeEsignApiV95({
+        employee_id: employeeId, file_name: file.name, file_type: file.type || "image/png",
+        data_url: reader.result, sign_source: "UPLOAD"
+      });
+      input.value = "";
+      if (!res || !res.success) { alert((res && res.message) || "Gagal upload tanda tangan."); return; }
+      await loadRequesterEsignV88(employeeId);
+      alert("Tanda tangan berhasil diupload dan dapat digunakan kembali.");
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function readFPBAttachmentV86() {
+    return new Promise((resolve, reject) => {
+      const input = document.getElementById("fpbAttachmentPdf");
+      if (!input || !input.files || !input.files.length) {
+        resolve([]);
+        return;
+      }
+
+      const file = input.files[0];
+      if (file.type !== "application/pdf" && !String(file.name || "").toLowerCase().endsWith(".pdf")) {
+        reject(new Error("Lampiran wajib dalam format PDF."));
+        return;
+      }
+
+      const reader = new FileReader();
+      reader.onload = () => resolve([{
+        file_name: file.name,
+        file_type: file.type || "application/pdf",
+        mime_type: file.type || "application/pdf",
+        file_size: file.size,
+        data_url: reader.result
+      }]);
+      reader.onerror = () => reject(new Error("Gagal membaca file lampiran."));
+      reader.readAsDataURL(file);
+    });
+  }
+
+async function saveFPB() {
+    let attachments = [];
+    try {
+      attachments = await readFPBAttachmentV86();
+    } catch (err) {
+      alert(err.message || err);
+      return;
+    }
+
+    const payload = { header: {
+      fpb_no: document.getElementById("fpbNo").value,
+      requester_id: document.getElementById("fpbRequester").value,
+      department_id: document.getElementById("fpbDepartment").value,
+      fpb_date: document.getElementById("fpbDate").value,
+      priority: document.getElementById("fpbPriority").value,
+      company_id: document.getElementById("fpbCompany").value,
+      status: document.getElementById("fpbStatus").value,
+      purpose: document.getElementById("fpbPurpose").value,
+      requester_esign: document.getElementById("fpbRequesterEsign").value,
+      requester_esign_id: document.getElementById("fpbRequesterEsignId").value,
+      requester_esign_url: document.getElementById("fpbRequesterEsignUrl").value
+    }, details: collectFPBDetails(), attachments: attachments };
+
+    let res = await fpbCreateServerV80(payload);
+    if (!res || !res.success) res = await Core.api("createFPB", payload);
+    if (!res.success) { alert(res.message || "Gagal membuat FPB"); return; }
+
+    alert((res.message || "FPB berhasil dibuat") + "\nNo FPB: " + ((res.data && res.data.fpb_no) || ""));
+    UI.closeModal();
+    loadFPB();
+  }
+
+
+  function todayValue(){const d=new Date();return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");}
+  function formatDateOnly(value){if(!value)return "";try{const d=new Date(value);return isNaN(d.getTime())?value:d.toLocaleDateString("id-ID");}catch(e){return value;}}
+
+
+  return { init, loadPage, login, logout, loadFPB, openFPBDetailModal, openAddFPBModal, onFPBRequesterChange, searchFPBRequester, selectFPBRequester, previewFPBNo, addFPBDetailRow, openEsignPadV88, clearEsignCanvasV88, saveEsignCanvasV88, uploadEsignPngV88, openEsignFileV97, loadRequesterEsignV90, saveFPB, loadUserManagement, openAddUserModal, searchEmployeeForUser, selectEmployeeForUser, saveNewUser, syncLoaderConfig, openLoaderImport, validateLoaderFile, processLoaderImport, openLoaderTemplate, openProfileModal, openChangePhotoModal, previewProfilePhoto, uploadProfilePhoto, globalSearch };
+})();
+
+const PageRuntime = (() => {
+  const moduleMap = {
+    fpb:"fpb", underlying:"underlying", quotation:"quotation", pp:"pp", pr:"pr", po:"po", receive:"receive", invoice:"invoice", payment:"payment",
+    "verifikasi-ga":"fpb", "verifikasi-fat":"pp", "verifikasi-ia":"pp", "pp-approve":"pp"
+  };
+
+  function init(pageKey){
+    if(["dashboard","monitoring","sla","flow-timeline","laporan"].includes(pageKey)) loadDashboardLike(pageKey);
+    if(moduleMap[pageKey]) loadModuleTable(pageKey, moduleMap[pageKey]);
+    if(pageKey==="my-task") loadMyTask();
+    if(pageKey==="data-master") loadMaster("vendor");
+    if(pageKey==="management-user") App.loadUserManagement();
+    if(pageKey==="fpb") App.loadFPB();
+    if(pageKey==="management-role") loadMaster("role");
+    if(pageKey==="approval-matrix") loadMaster("approval_matrix");
+    if(pageKey==="loader") loadLoader();
+  }
+
+
+  function dashboardServerV84(payload) {
+    return new Promise((resolve) => {
+      google.script.run
+        .withSuccessHandler((res) => resolve(res || { success:false, message:"Server return null dari dashboardDirectV84" }))
+        .withFailureHandler((err) => resolve({ success:false, message: err && err.message ? err.message : String(err) }))
+        .dashboardDirectV84(payload || {});
+    });
+  }
+
+
+  async function loadDashboardLike(pageKey){
+    let res = await dashboardServerV84({});
+    if(!res || !res.success) res = await Core.api("getDashboard", {});
+    if(!res || !res.success) return;
+
+    const d = res.data || {};
+    const summary = d.summary || {};
+
+    set("kpiTotal", summary.total || 0);
+    set("kpiOnTrack", summary.onTrack || 0);
+    set("kpiWarning", summary.warning || 0);
+    set("kpiOverdue", summary.overdue || 0);
+
+    const seg = document.getElementById("segmentCards");
+    if(seg) {
+      seg.innerHTML = (d.segments||[]).map(s=>`
+        <div class="timeline-step">
+          <b>${UI.esc(s.step)}</b>
+          <h2>${s.count}</h2>
+          <small>⚠ ${s.warning || 0} | ⛔ ${s.overdue || 0}</small>
+        </div>
+      `).join("") || `<div class="empty">Belum ada data</div>`;
+    }
+
+    const tbody = document.querySelector("[data-monitoring-table]");
+    if(tbody) {
+      const docs = d.documents || [];
+      tbody.innerHTML = docs.map((r,i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td>${UI.esc(r.document_no || r.document_id || "-")}</td>
+          <td>${UI.esc(r.current_step || "-")}</td>
+          <td>${UI.badge(r.status || "OPEN")}</td>
+          <td>${UI.badge(r.sla_status || "ON_TRACK")}</td>
+          <td>${UI.esc(r.current_pic || "-")}</td>
+        </tr>
+      `).join("") || `<tr><td colspan="6"><div class="empty">Belum ada data monitoring</div></td></tr>`;
+    }
+  }
+  async function loadModuleTable(pageKey, module){
+    // Sinkronkan KPI di semua halaman proses agar mengikuti total pengajuan dari FPB/DOCUMENT_STATUS.
+    try {
+      const dash = await dashboardServerV84({});
+      if (dash && dash.success && dash.data && dash.data.summary) {
+        const summary = dash.data.summary;
+        set("kpiTotal", summary.total || 0);
+        set("kpiOnTrack", summary.onTrack || 0);
+        set("kpiWarning", summary.warning || 0);
+        set("kpiOverdue", summary.overdue || 0);
+      }
+    } catch(e) {
+      console.warn("KPI sync skipped", e);
+    }
+
+    const tbody = document.querySelector("[data-module-table]");
+    if(!tbody) return;
+
+    let rows = [];
+
+    // Halaman yang masih berhubungan dengan FPB awal mengambil data FPB sebagai sumber pengajuan.
+    if (module === "fpb") {
+      const fpbRes = await fpbListServerV80({});
+      rows = fpbRes && fpbRes.success ? (fpbRes.data || []) : [];
+    } else {
+      const res = await Core.api("getModuleList", {module, filters:{}});
+      rows = res && res.success ? (res.data || []) : [];
+    }
+
+    tbody.innerHTML = rows.slice(0,20).map((r,i)=>{
+      const no = r.fpb_no||r.underlying_no||r.pp_no||r.pr_no||r.po_no||r.receive_no||r.invoice_no||r.payment_no||r.document_no||r[Object.keys(r)[1]]||"-";
+      const dept = r.department_label || r.department_name || r.department_id || r.department || "-";
+      const requester = r.requester_label || r.requester_name || r.requester_id || r.vendor_name || "-";
+      return `<tr>
+        <td><input type="checkbox"></td>
+        <td>${i+1}</td>
+        <td><a onclick="PageRuntime.openDetail('${module}','${UI.esc(no)}')">${UI.esc(no)}</a></td>
+        <td>${UI.esc(dept)}</td>
+        <td>${UI.esc(requester)}</td>
+        <td>${UI.badge(r.status||r.document_status||r.sla_status||"DRAFT")}</td>
+        <td><button class="btn" onclick="PageRuntime.openDetail('${module}','${UI.esc(no)}')">Detail</button></td>
+      </tr>`;
+    }).join("") || `<tr><td colspan="8"><div class="empty">Belum ada data</div></td></tr>`;
+  }
+
+  async function loadMyTask(){
+    const res = await Core.api("getMyTasks", {filters:{}});
+    const tbody = document.querySelector("[data-task-table]");
+    if(tbody) tbody.innerHTML = (res.data||[]).map((r,i)=>`<tr><td>${i+1}</td><td>${UI.esc(r.task_id)}</td><td>${UI.esc(r.document_no)}</td><td>${UI.esc(r.current_step_name)}</td><td>${UI.badge(r.sla_status)}</td><td><button class="btn primary" onclick="PageRuntime.taskAction('${r.task_id}')">Kerjakan</button></td></tr>`).join("") || `<tr><td colspan="6"><div class="empty">Tidak ada task</div></td></tr>`;
+  }
+
+  async function loadMaster(type){
+    const res = await Core.api("getMasterData", {type, filters:{}});
+    const tbody = document.querySelector("[data-master-table]");
+    if(!tbody) return;
+    const rows = res.data||[];
+    tbody.innerHTML = rows.slice(0,20).map((r,i)=>`<tr><td>${i+1}</td><td>${UI.esc(Object.values(r)[0])}</td><td>${UI.esc(Object.values(r)[1])}</td><td>${UI.esc(Object.values(r)[2])}</td><td>${UI.badge(r.is_active ? "Aktif":"Nonaktif")}</td><td><button class="btn" onclick="PageRuntime.masterModal('${type}', '${UI.esc(Object.values(r)[0])}')">Edit</button></td></tr>`).join("") || `<tr><td colspan="6"><div class="empty">Belum ada data</div></td></tr>`;
+  }
+
+  async function loadLoader(){
+    const searchEl = document.querySelector("[data-filter-search]");
+    const groupEl = document.getElementById("loaderGroupFilter");
+
+    const res = await Core.api("getLoaderConfig", {
+      filters: {
+        search: searchEl ? searchEl.value : ""
+      }
+    });
+
+    const wrap = document.getElementById("loaderCards");
+    const tbody = document.querySelector("[data-loader-table]");
+
+    if(!res.success){
+      const msg = UI.esc(res.message || "Gagal mengambil config loader");
+      if(wrap) wrap.innerHTML = `<div class="empty">${msg}</div>`;
+      if(tbody) tbody.innerHTML = `<tr><td colspan="8"><div class="empty">${msg}</div></td></tr>`;
+      return;
+    }
+
+    const rowsAll = res.data || [];
+    const selectedGroup = groupEl ? String(groupEl.value || "") : "";
+    const rows = selectedGroup ? rowsAll.filter(r => String(r.loader_group || r.group_name || "") === selectedGroup) : rowsAll;
+
+    set("loaderPengadaan", countLoaderGroup(rowsAll, "PENGADAAN"));
+    set("loaderProses", countLoaderGroup(rowsAll, "PROSES"));
+    set("loaderMaster", countLoaderGroup(rowsAll, "MASTER DATA"));
+    set("loaderMonitoring", countLoaderGroup(rowsAll, "MONITORING"));
+    set("loaderSystem", countLoaderGroup(rowsAll, "SYSTEM"));
+
+    if(wrap){
+      const groups = ["PENGADAAN", "PROSES", "MASTER DATA", "MONITORING", "SYSTEM"];
+      wrap.innerHTML = groups.map(group => {
+        const items = rowsAll.filter(r => String(r.loader_group || r.group_name || "").toUpperCase() === group);
+        return `
+          <div class="card card-pad">
+            <h3>${group}</h3>
+            ${items.length ? items.map(r => `
+              <div style="display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #e5edf7;padding:9px 0">
+                <div>
+                  <b>${UI.esc(r.module_name || r.loader_name || r.loader_id)}</b>
+                  <small style="display:block;color:#64748b">Target: ${UI.esc(r.sheet_target || r.target_sheet || "-")}</small>
+                </div>
+                <button class="btn primary" onclick="App.openLoaderImport('${UI.esc(r.loader_id)}')">Pilih</button>
+              </div>
+            `).join("") : `<div class="empty">Belum ada config.</div>`}
+          </div>
+        `;
+      }).join("");
+    }
+
+    if(tbody){
+      tbody.innerHTML = rows.map((r,i)=>`
+        <tr>
+          <td>${i+1}</td>
+          <td>${UI.esc(r.loader_group || r.group_name || "-")}</td>
+          <td>${UI.esc(r.module_name || r.loader_name || "-")}</td>
+          <td>${UI.esc(r.sheet_target || r.target_sheet || "-")}</td>
+          <td>${UI.esc(r.template_sheet || r.template_name || "-")}</td>
+          <td>${UI.badge(Number(r.require_validation || 0) === 1 ? "VALIDASI" : "TANPA VALIDASI")}</td>
+          <td>${UI.badge(Number(r.is_active || 0) === 1 ? "AKTIF" : "NONAKTIF")}</td>
+          <td>
+            <button class="btn primary" onclick="App.openLoaderImport('${UI.esc(r.loader_id)}')">Import</button>
+            <button class="btn" onclick="App.openLoaderTemplate('${UI.esc(r.loader_id)}')">Template</button>
+          </td>
+        </tr>
+      `).join("") || `<tr><td colspan="8"><div class="empty">Config loader belum ada. Klik Sinkron Config Loader.</div></td></tr>`;
+    }
+  }
+
+  function countLoaderGroup(rows, group){
+    return rows.filter(r => String(r.loader_group || r.group_name || "").toUpperCase() === group).length;
+  }
+
+
+  function openDetail(module, id){
+    UI.openModal("Detail Dokumen", `<p>Module: <b>${module}</b></p><p>Dokumen: <b>${id}</b></p>`, `<button class="btn" onclick="UI.closeModal()">Tutup</button><button class="btn primary" onclick="PageRuntime.workflowModal('${module}','${id}')">Proses Workflow</button>`);
+  }
+
+  function workflowModal(module,id){
+    UI.openModal("Aksi Workflow", `<textarea id="wfRemarks" placeholder="Catatan proses"></textarea>`, `<button class="btn green" onclick="PageRuntime.workflowAction('${module}','${id}','DONE')">Approve / Done</button><button class="btn orange" onclick="PageRuntime.workflowAction('${module}','${id}','REVISED')">Revisi</button><button class="btn red" onclick="PageRuntime.workflowAction('${module}','${id}','REJECTED')">Reject</button>`);
+  }
+
+  async function workflowAction(module,id,action){
+    const remarks = document.getElementById("wfRemarks") ? document.getElementById("wfRemarks").value : "";
+    const res = await Core.api("workflowAction", {document_type: module.toUpperCase(), document_id:id, document_no:id, action_status:action, remarks});
+    alert(res.message || (res.success ? "Berhasil" : "Gagal"));
+    UI.closeModal();
+  }
+
+  function taskAction(taskId){ UI.openModal("Task", `<p>Task ${taskId}</p>`, `<button class="btn green" onclick="UI.closeModal()">Selesai</button>`); }
+  function masterModal(type,id){ UI.openModal("Edit Master", `<p>${type}: ${id}</p><p>Form edit akan membaca header dari database.</p>`, `<button class="btn primary">Simpan</button>`); }
+
+  function set(id,val){ const el=document.getElementById(id); if(el) el.textContent=val; }
+  return { init, openDetail, workflowModal, workflowAction, taskAction, masterModal };
+})();
+
+window.addEventListener("load", App.init);
+window.addEventListener("hashchange", () => {
+  const p = location.hash.replace("#/","");
+  if(p) App.loadPage(p);
+});
+</script>

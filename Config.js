@@ -1,47 +1,60 @@
-/**
- * =====================================================
- * JG-SIGAP CONFIG V5
- * Centralized app, database, and role configuration.
- * =====================================================
- */
 const CONFIG = {
-
   APP: {
     NAME: "JG-SIGAP",
-
-    DEV_URL:
-      "https://script.google.com/macros/s/AKfycbwjQmDqckJvpbZHf6JUd_9MibJ5OM71F_571h92mz8/dev",
-
-    EXEC_URL:
-      "https://script.google.com/macros/s/AKfycbxsqk2okOPyREabWs0GstRlNWZd1rIm8j9JPSP8_Z93vVFGc0zEWdUzCj-tVySgQVgG/exec",
-
-    // true = /dev, false = /exec
-    USE_DEV: true,
-
+    LOGO_URL: "https://drive.google.com/thumbnail?id=1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6",
+    FULL_NAME: "Jhonlin Group - Sistem Integrasi General Affair Procurement",
+    VERSION: "3.0.0-REV1",
+    ENV: "DEV",
     DEFAULT_PAGE: "dashboard",
-    LOGIN_PAGE: "login"
+    LOGIN_PAGE: "login",
+    SESSION_HOURS: 8,
+
+    /**
+     * WAJIB DIISI setelah database V3 REV1 diupload menjadi Google Spreadsheet.
+     * Ambil dari URL:
+     * https://docs.google.com/spreadsheets/d/SPREADSHEET_ID/edit
+     */
+    SPREADSHEET_ID: "1nfgncJbH-IN7owk53DqeVAaMQHP9hKIwe-ADauLBZD4",
+
+    TIMEZONE: "Asia/Makassar",
+    WEBAPP_URL: "",
   },
 
   SHEET: {
     CONFIG: "00_M_CONFIG",
-
     USER: "01_M_USER",
     ROLE: "02_M_ROLE",
     DEPARTMENT: "03_M_DEPARTMENT",
     EMPLOYEE: "04_M_EMPLOYEE",
     USER_ROLE: "05_M_USER_ROLE",
-
     APPROVAL_MATRIX: "06_M_APPROVAL_MATRIX",
     WORKFLOW_STEP: "07_M_WORKFLOW_STEP",
     SLA: "08_M_SLA",
     NUMBERING: "09_M_NUMBERING",
 
+    VENDOR: "10_M_VENDOR",
+    COMPANY: "11_M_COMPANY",
+    SITE: "12_M_SITE",
+    COST_CENTER: "13_M_COST_CENTER",
+    ITEM_CATEGORY: "14_M_ITEM_CATEGORY",
+    MENU: "15_M_MENU",
+    ROLE_MENU: "16_M_ROLE_MENU",
+    PRIORITY: "17_M_PRIORITY",
+    WORK_CALENDAR: "18_M_WORK_CALENDAR",
+    HOLIDAY_CALENDAR: "19_M_HOLIDAY_CALENDAR",
+    NOTIFICATION_TEMPLATE: "20_M_NOTIFICATION_TEMPLATE",
+    ESCALATION_RULE: "21_M_ESCALATION_RULE",
+    LOCATION: "22_M_LOCATION",
+    UOM: "23_M_UOM",
+    EMPLOYEE_ESIGN: "24_M_EMPLOYEE_ESIGN",
+
     FPB_HEADER: "10_T_FPB_HEADER",
     FPB_DETAIL: "11_T_FPB_DETAIL",
-
     UNDERLYING_HEADER: "12_T_UNDERLYING_HEADER",
     UNDERLYING_DETAIL: "13_T_UNDERLYING_DETAIL",
     VENDOR_COMPARISON: "14_T_VENDOR_COMPARISON",
+    QUOTATION_HEADER: "15_T_QUOTATION_HEADER",
+    QUOTATION_DETAIL: "16_T_QUOTATION_DETAIL",
 
     PP_HEADER: "20_T_PP_HEADER",
     PP_DETAIL: "21_T_PP_DETAIL",
@@ -58,15 +71,24 @@ const CONFIG = {
 
     INVOICE_HEADER: "60_T_INVOICE_HEADER",
     INVOICE_DETAIL: "61_T_INVOICE_DETAIL",
+    SPD_HEADER: "62_T_SPD_HEADER",
+    SPD_DETAIL: "63_T_SPD_DETAIL",
 
     PAYMENT_HEADER: "70_T_PAYMENT_HEADER",
     PAYMENT_DETAIL: "71_T_PAYMENT_DETAIL",
+
+    DOCUMENT_ATTACHMENT: "78_T_DOCUMENT_ATTACHMENT",
 
     APPROVAL: "80_T_APPROVAL",
     WORKFLOW_HISTORY: "81_T_WORKFLOW_HISTORY",
     DOCUMENT_LINK: "82_T_DOCUMENT_LINK",
     DOCUMENT_STATUS: "83_T_DOCUMENT_STATUS",
     ITEM_LINK: "84_T_ITEM_LINK",
+    SLA_SNAPSHOT: "85_T_SLA_SNAPSHOT",
+    WARNING_LOG: "86_T_WARNING_LOG",
+    BOTTLENECK_SNAPSHOT: "87_T_BOTTLENECK_SNAPSHOT",
+    USER_TASK: "88_T_USER_TASK",
+    TASK_HISTORY: "89_T_TASK_HISTORY",
 
     AUDIT_LOG: "90_T_AUDIT_LOG",
     NOTIFICATION: "91_T_NOTIFICATION",
@@ -74,49 +96,150 @@ const CONFIG = {
     IMPORT_DETAIL: "93_T_IMPORT_DETAIL",
     USER_SESSION: "94_T_USER_SESSION",
 
-    DASHBOARD: "95_R_DASHBOARD",
-    R_SLA: "96_R_SLA",
-    BOTTLENECK: "97_R_BOTTLENECK",
-    R_WORKFLOW: "98_R_WORKFLOW",
+    DASHBOARD_REPORT: "95_R_DASHBOARD",
+    SLA_REPORT: "96_R_SLA",
+    BOTTLENECK_REPORT: "97_R_BOTTLENECK",
+    WORKFLOW_REPORT: "98_R_WORKFLOW",
 
+    SYSTEM_LOG: "99_SYSTEM_LOG",
     LOADER_CONFIG: "96_M_LOADER_CONFIG",
     LOADER_TEMPLATE: "97_M_LOADER_TEMPLATE",
-
-    SYSTEM_LOG: "99_SYSTEM_LOG"
   },
 
-  ROLE: {
-    SUPERADMIN: "SUPERADMIN",
-    ADMIN: "ADMIN",
-    REQUESTER: "REQUESTER",
-    GA_VERIFY: "GA_VERIFY",
+  ROLE_CODE_MAP: {
+    SA: "SUPERADMIN",
+    ADM: "ADMIN",
+    REQ: "REQUESTER",
+    GAV: "GA_VERIFY",
     FAT: "FAT",
     IA: "IA",
-    PROCUREMENT: "PROCUREMENT",
-    WAREHOUSE: "WAREHOUSE",
+    PR: "PROCUREMENT",
+    SC: "PROCUREMENT",
+    RCV: "WAREHOUSE",
+    INV: "FINANCE",
     FINANCE: "FINANCE",
-    MONITORING: "MONITORING"
-  }
+    MONITORING: "MONITORING",
+    MGMT: "MANAGEMENT",
+  },
+
+  PAGE: {
+    login: { file: "Page_Login", public: true, title: "Login" },
+    dashboard: { file: "Page_Dashboard", title: "Dashboard" },
+    fpb: { file: "Page_FPB", title: "FPB" },
+    underlying: { file: "Page_Underlying", title: "Underlying" },
+    quotation: { file: "Page_Quotation", title: "Quotation" },
+    "verifikasi-ga": { file: "Page_VerifikasiGA", title: "Verifikasi GA" },
+    pp: { file: "Page_PP", title: "PP" },
+    "verifikasi-fat": { file: "Page_VerifikasiFAT", title: "Verifikasi FAT" },
+    "verifikasi-ia": { file: "Page_VerifikasiIA", title: "Verifikasi IA" },
+    "pp-approve": { file: "Page_PPApprove", title: "PP Approve" },
+    pr: { file: "Page_PR", title: "PR" },
+    po: { file: "Page_PO", title: "PO" },
+    receive: { file: "Page_Receive", title: "Receive" },
+    invoice: { file: "Page_InvoiceSPD", title: "Invoice / SPD" },
+    "input-invoice": { file: "Page_InputInvoice", title: "Input Invoice" },
+    "create-spd": { file: "Page_CreateSPD", title: "Create SPD" },
+    payment: { file: "Page_Payment", title: "Payment" },
+    penghapusan: { file: "Page_Penghapusan", title: "Penghapusan" },
+    loader: { file: "Page_Loader", title: "Loader" },
+    monitoring: { file: "Page_Monitoring", title: "Monitoring" },
+    sla: { file: "Page_SLA", title: "SLA Monitoring" },
+    "flow-timeline": { file: "Page_FlowTimeline", title: "Flow Timeline" },
+    laporan: { file: "Page_Laporan", title: "Laporan" },
+    "data-master": { file: "Page_DataMaster", title: "Data Master" },
+    "management-user": {
+      file: "Page_ManagementUser",
+      title: "Management User",
+    },
+    "tambah-user": { file: "Page_TambahUser", title: "Tambah User" },
+    "management-role": {
+      file: "Page_ManagementRole",
+      title: "Management Role",
+    },
+    "tambah-role": { file: "Page_TambahRole", title: "Tambah Role" },
+    "approval-matrix": {
+      file: "Page_ApprovalMatrix",
+      title: "Approval Matrix",
+    },
+    "tambah-matrix": { file: "Page_TambahMatrix", title: "Tambah Matrix" },
+    settings: { file: "Page_Settings", title: "Settings" },
+    "my-task": { file: "Page_MyTask", title: "My Task" },
+    "not-found": { file: "Page_NotFound", title: "Not Found" },
+    "access-denied": { file: "Page_AccessDenied", title: "Access Denied" },
+  },
+
+  MODULES: {
+    fpb: {
+      header: "FPB_HEADER",
+      detail: "FPB_DETAIL",
+      id: "fpb_id",
+      no: "fpb_no",
+      step: "FPB_SUBMITTED",
+      docType: "FPB",
+    },
+    underlying: {
+      header: "UNDERLYING_HEADER",
+      detail: "UNDERLYING_DETAIL",
+      id: "underlying_id",
+      no: "underlying_no",
+      step: "UNDERLYING_CREATED",
+      docType: "UNDERLYING",
+    },
+    pp: {
+      header: "PP_HEADER",
+      detail: "PP_DETAIL",
+      id: "pp_id",
+      no: "pp_no",
+      step: "PP_DRAFT",
+      docType: "PP",
+    },
+    pr: {
+      header: "PR_HEADER",
+      detail: "PR_DETAIL",
+      id: "pr_id",
+      no: "pr_no",
+      step: "PR_CREATED",
+      docType: "PR",
+    },
+    po: {
+      header: "PO_HEADER",
+      detail: "PO_DETAIL",
+      id: "po_id",
+      no: "po_no",
+      step: "PO_CREATED",
+      docType: "PO",
+    },
+    receive: {
+      header: "RECEIVE_HEADER",
+      detail: "RECEIVE_DETAIL",
+      id: "receive_id",
+      no: "receive_no",
+      step: "RECEIVED",
+      docType: "RECEIVE",
+    },
+    invoice: {
+      header: "INVOICE_HEADER",
+      detail: "INVOICE_DETAIL",
+      id: "invoice_id",
+      no: "invoice_no",
+      step: "INVOICED",
+      docType: "INVOICE",
+    },
+    spd: {
+      header: "SPD_HEADER",
+      detail: "SPD_DETAIL",
+      id: "spd_id",
+      no: "spd_no",
+      step: "SPD_CREATED",
+      docType: "SPD",
+    },
+    payment: {
+      header: "PAYMENT_HEADER",
+      detail: "PAYMENT_DETAIL",
+      id: "payment_id",
+      no: "payment_no",
+      step: "PAID",
+      docType: "PAYMENT",
+    },
+  },
 };
-
-function getAppUrl() {
-  return CONFIG.APP.USE_DEV
-    ? CONFIG.APP.DEV_URL
-    : CONFIG.APP.EXEC_URL;
-}
-
-function getAppConfig() {
-  return {
-    name: CONFIG.APP.NAME,
-    appUrl: getAppUrl(),
-    devUrl: CONFIG.APP.DEV_URL,
-    execUrl: CONFIG.APP.EXEC_URL,
-    useDev: CONFIG.APP.USE_DEV,
-    defaultPage: CONFIG.APP.DEFAULT_PAGE,
-    loginPage: CONFIG.APP.LOGIN_PAGE,
-    tokenKey: "JG_SIGAP_TOKEN",
-    userKey: "JG_SIGAP_USER",
-    roleKey: "JG_SIGAP_ROLE",
-    rolesKey: "JG_SIGAP_ROLES"
-  };
-}

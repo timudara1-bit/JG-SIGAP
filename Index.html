@@ -2,93 +2,18 @@
 <html>
 <head>
   <base target="_top">
-
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-  <title>JG-SIGAP</title>
-
-  <?!= include('CSS_Layout'); ?>
-  <?!= include('CSS_Navbar'); ?>
-  <?!= include('CSS_Sidebar'); ?>
-  <?!= include('CSS_Footer'); ?>
-
-  <?!= include('CSS_Settings'); ?>
-  <?!= include('CSS_app.css'); ?>
-  <?!= include('CSS_Login'); ?>
-  <?!= include('CSS_Dashboard.css'); ?>
-  <?!= include('CSS_FPB.css'); ?>
-  <?!= include('CSS_Loader.css'); ?>
-</head>
-
-<body>
-
+  <meta charset="utf-8">
   <script>
-    var serverData = {};
-    try {
-      // Parsing data bawaan dari doGet backend
-      serverData = JSON.parse('<?!= initialData ?>' || '{}');
-    } catch(e) {
-      serverData = { page: "login" };
-    }
-
-    // Periksa status lokal di browser
-    var localToken = localStorage.getItem("JG_SIGAP_TOKEN");
-    var expiryTime = localStorage.getItem("JG_SIGAP_EXPIRY");
-    var isSessionValid = false;
-
-    if (localToken && expiryTime) {
-      if (Date.now() < parseInt(expiryTime, 10)) {
-        isSessionValid = true; 
-      } else {
-        localStorage.removeItem("JG_SIGAP_TOKEN");
-        localStorage.removeItem("JG_SIGAP_EXPIRY");
-      }
-    }
-
-    // Jika user punya sesi valid, paksa halaman mengarah ke dashboard, bukan login
-    if (isSessionValid) {
-      serverData.page = "dashboard";
-      serverData.token = localToken;
-    }
-
-    window.INITIAL_DATA = serverData;
-    window.APP_INITIAL_DATA = serverData;
-    window.APP_CONFIG = JSON.parse('<?!= appConfig ?>' || '{}');
+    window.APP_CONFIG = <?!= appConfig ?>;
   </script>
-
-<div id="app-container">
-    
-    <div id="navbar-container">
-      <?!= include('Layout_Navbar') ?>
-    </div>
-
-    <div id="main-layout">
-      <div id="sidebar-container">
-        <?!= include('Layout_Sidebar') ?>
-      </div>
-      
-      <div id="content">
-        </div>
-    </div>
-
-    <div id="footer-container">
-      <?!= include('Layout_Footer') ?>
-    </div>
-    
-  </div>
-  
-  <?!= include('JS_core.js'); ?>
-  <?!= include('JS_settings.js'); ?>
-  <?!= include('JS_login.js'); ?>
-  <?!= include('JS_app.js'); ?>
-  <?!= include('JS_menu.js'); ?>
-  <?!= include('JS_dashboard.js'); ?>
-  <?!= include('JS_dashboardConfig.js'); ?>
-  <?!= include('JS_FPB.js'); ?>
-  <?!= include('JS_loader.js'); ?>
-  <?!= include('JS_sla.js'); ?>
-  <?!= include('JS_userManagement.js'); ?>
-
+  <?!= include('CSS_app'); ?>
+  <?!= include('CSS_components'); ?>
+  <?!= include('CSS_pages'); ?>
+</head>
+<body>
+  <div id="app"></div>
+  <?!= include('JS_core'); ?>
+  <?!= include('JS_ui'); ?>
+  <?!= include('JS_app'); ?>
 </body>
 </html>

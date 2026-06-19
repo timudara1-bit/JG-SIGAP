@@ -1,0 +1,68 @@
+<div class="page-title">
+  <div>
+    <div class="breadcrumb">JG-SIGAP / Loader</div>
+    <h1>Loader Data per Segment</h1>
+    <p>Import dan validasi data sesuai segment: Pengadaan, Proses, Master Data, Monitoring, dan System.</p>
+  </div>
+  <div>
+    <button class="btn primary" onclick="App.syncLoaderConfig()">Sinkron Config Loader</button>
+    <button class="btn" onclick="PageRuntime.init('loader')">Refresh</button>
+  </div>
+</div>
+
+<div class="grid grid-5" style="margin-bottom:14px">
+  <div class="card kpi"><div class="ico">📋</div><div><span>Pengadaan</span><b id="loaderPengadaan">0</b></div></div>
+  <div class="card kpi"><div class="ico">📦</div><div><span>Proses</span><b id="loaderProses">0</b></div></div>
+  <div class="card kpi"><div class="ico">🗄️</div><div><span>Master Data</span><b id="loaderMaster">0</b></div></div>
+  <div class="card kpi"><div class="ico">📊</div><div><span>Monitoring</span><b id="loaderMonitoring">0</b></div></div>
+  <div class="card kpi"><div class="ico">⚙️</div><div><span>System</span><b id="loaderSystem">0</b></div></div>
+</div>
+
+<div class="card card-pad" style="margin-bottom:14px">
+  <h3>Pilih Loader per Segment</h3>
+  <p style="color:#64748b;margin-top:0">
+    Data pilihan loader diambil dari <b>96_M_LOADER_CONFIG</b>. Jika masih kosong, klik <b>Sinkron Config Loader</b>.
+  </p>
+  <div id="loaderCards" class="grid grid-5"></div>
+</div>
+
+<div class="card">
+  <div class="toolbar">
+    <div class="field">
+      <label>Cari Loader</label>
+      <input data-filter-search placeholder="Cari module / target sheet / group..." />
+    </div>
+    <div class="field">
+      <label>Group</label>
+      <select id="loaderGroupFilter">
+        <option value="">Semua Group</option>
+        <option value="PENGADAAN">PENGADAAN</option>
+        <option value="PROSES">PROSES</option>
+        <option value="MASTER DATA">MASTER DATA</option>
+        <option value="MONITORING">MONITORING</option>
+        <option value="SYSTEM">SYSTEM</option>
+      </select>
+    </div>
+    <button class="btn primary" onclick="PageRuntime.init('loader')">Filter</button>
+  </div>
+
+  <div class="table-wrap">
+    <table class="table">
+      <thead>
+        <tr>
+          <th>No</th>
+          <th>Group</th>
+          <th>Module</th>
+          <th>Target Sheet</th>
+          <th>Template</th>
+          <th>Validasi</th>
+          <th>Status</th>
+          <th>Aksi</th>
+        </tr>
+      </thead>
+      <tbody data-loader-table>
+        <tr><td colspan="8"><div class="empty">Memuat config loader...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+</div>

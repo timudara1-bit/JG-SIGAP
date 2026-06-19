@@ -1,0 +1,31 @@
+<script>
+/*************************************************
+ * GLOBAL LOGO HELPER
+ * Bisa dipanggil dari page mana pun:
+ * - Logo.url()
+ * - Logo.img()
+ * - Logo.render(selector)
+ *************************************************/
+const Logo = (() => {
+  const DEFAULT_LOGO_ID = "1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6";
+
+  function fileId() {
+    return (window.APP_CONFIG && window.APP_CONFIG.logoFileId) || DEFAULT_LOGO_ID;
+  }
+
+  function url() {
+    return (window.APP_CONFIG && window.APP_CONFIG.logoUrl) || `https://drive.google.com/thumbnail?id=${fileId()}`;
+  }
+
+  function img(className = "app-logo-img", alt = "JG-SIGAP Logo") {
+    return `<img src="${url()}" alt="${alt}" class="${className}" onerror="this.style.display='none'">`;
+  }
+
+  function render(selector, className = "app-logo-img") {
+    const el = document.querySelector(selector);
+    if (el) el.innerHTML = img(className);
+  }
+
+  return { fileId, url, img, render };
+})();
+</script>

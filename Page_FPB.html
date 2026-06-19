@@ -1,32 +1,34 @@
-<!DOCTYPE html>
-<html>
+<div class="page-title">
+  <div>
+    <div class="breadcrumb">JG-SIGAP / Pengadaan</div>
+    <h1>Form Permintaan Barang / Jasa</h1>
+    <p>Daftar FPB dan pembuatan pengajuan baru.</p>
+  </div>
+  <div>
+    <button class="btn primary" onclick="App.openAddFPBModal()">+ Tambah FPB</button>
+    <button class="btn" onclick="App.loadFPB()">Refresh</button>
+  </div>
+</div>
 
-  <head>
+<div class="grid grid-4" style="margin-bottom:14px">
+  <div class="card kpi"><div class="ico">📄</div><div><span>Total FPB</span><b id="fpbTotal">0</b></div></div>
+  <div class="card kpi"><div class="ico">📝</div><div><span>Draft</span><b id="fpbDraft">0</b></div></div>
+  <div class="card kpi"><div class="ico">📤</div><div><span>Submitted</span><b id="fpbSubmitted">0</b></div></div>
+  <div class="card kpi"><div class="ico">✅</div><div><span>Approved</span><b id="fpbApproved">0</b></div></div>
+</div>
 
-    <base target="_top">
-
-    <?!= include('CSS_FPB.css'); ?>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-  </head>
-
-  <body>
-
-    <div class="page-title">
-
-      <h2>
-        Form Permintaan Barang / Jasa
-      </h2>
-
+<div class="card">
+  <div class="toolbar">
+    <div class="field">
+      <label>Cari FPB</label>
+      <input id="fpbSearchInput" placeholder="Cari nomor FPB / requester / department / status..." onkeydown="if(event.key==='Enter') App.loadFPB()">
     </div>
-
-    <?!= include('FPB_Header'); ?>
-
-    <?!= include('FPB_Detail'); ?>
-
-    <?!= include('FPB_Attachment'); ?>
-
-    <?!= include('FPB_Approval'); ?>
-
-  </body>
-
-</html>
+    <button class="btn primary" onclick="App.loadFPB()">Cari</button>
+  </div>
+  <div class="table-wrap">
+    <table class="table">
+      <thead><tr><th>FPB No</th><th>Tanggal</th><th>Requester</th><th>Department</th><th>Company</th><th>Priority</th><th>Keperluan</th><th>Status</th></tr></thead>
+      <tbody id="fpbTableBody"><tr><td colspan="8"><div class="empty">Memuat data FPB...</div></td></tr></tbody>
+    </table>
+  </div>
+</div>

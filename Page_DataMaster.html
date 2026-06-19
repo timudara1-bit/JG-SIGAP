@@ -1,0 +1,7 @@
+<div class="page-title">
+  <div><div class="breadcrumb">JG-SIGAP / Data Master</div><h1>Data Master</h1><p>Kelola master user, karyawan, department, vendor, role, SLA dan konfigurasi.</p></div>
+  <div><button class='btn primary' onclick="UI.openModal('Tambah Data','Pilih jenis master dan isi form sesuai header database.')">+ Tambah Data</button></div>
+</div>
+
+<div class="tabs"><div class="tab active" onclick="PageRuntime.init('data-master')">Vendor</div><div class="tab">User</div><div class="tab">Role</div><div class="tab">Department</div><div class="tab">SLA</div><div class="tab">Workflow Step</div></div>
+<div class="card"><div class="toolbar"><div class="field"><label>Cari</label><input></div><button class="btn primary">Filter</button><button class="btn">Import</button><button class="btn">Export</button></div><table class="table"><thead><tr><th>No</th><th>ID</th><th>Nama/Kode</th><th>Deskripsi</th><th>Status</th><th>Aksi</th></tr></thead><tbody data-master-table></tbody></table></div>

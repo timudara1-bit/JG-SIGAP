@@ -1,31 +1,176 @@
-<div class="login-box" id="loginBox">
-  <img
-    src="https://drive.google.com/thumbnail?id=1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6"
-    alt="Logo JG"
-    class="logo">
-
-  <h2>SIGAP</h2>
-
-  <p class="subtitle">
-    Sistem Informasi General Affair - Pengajuan
-  </p>
-
-  <input
-    type="email"
-    id="email"
-    placeholder="Email">
-
-  <input
-    type="password"
-    id="password"
-    placeholder="Password"
-    onkeydown="if(event.key === 'Enter'){ login(); }">
-
-  <button
-    class="login-button"
-    id="loginButton"
-    onclick="login()">
-    <span class="button-text">Login</span>
-    <span class="button-loader" id="buttonLoader"></span>
-  </button>
+<div class="login-page">
+  <div class="login-features">
+    <h3>Fitur Unggulan JG-SIGAP</h3>
+    <div class="feature">✅ Monitoring SLA real-time</div>
+    <div class="feature">⏱️ Lead Time Proses</div>
+    <div class="feature">⚠️ Warning & Overdue</div>
+    <div class="feature">🔗 Bottleneck Tracking</div>
+    <div class="feature">🔔 Notifikasi</div>
+  </div>
+  <div class="login-card">
+    <div class="login-logo-wrap"><img src="https://drive.google.com/thumbnail?id=1khiHehuJxwrcC_6LE__O9yXvBV6Hx_O6" class="login-logo-img" alt="JG-SIGAP Logo"></div>
+    <h2>Selamat Datang</h2>
+    <p>Silakan masuk untuk melanjutkan ke sistem</p>
+    <label>Email</label>
+    <input id="loginEmail" placeholder="Masukkan email Anda" />
+    <label>Password</label>
+    <input
+      id="loginPassword"
+      type="password"
+      placeholder="Masukkan password Anda"
+      onkeydown="if (event.key === 'Enter') App.login();" />
+    <div
+      class="remember-row"
+      style="display: flex; justify-content: space-between; margin: 5px 0">
+      <label><input type="checkbox" /> Ingat saya</label><a>Lupa Password?</a>
+    </div>
+    <button class="btn primary" style="width: 100%" onclick="App.login()">
+      Login
+    </button>
+    <button
+      class="btn"
+      style="width: 100%; margin-top: 10px"
+      onclick="alert('Hubungi Administrator JG-SIGAP')">
+      Hubungi Administrator
+    </button>
+  </div>
+  <div class="login-left">
+    <!-- <div class="login-logo">
+      <img src="https://raw.githubusercontent.com/jhonlin-group/JG-SIGAP/main/images/logo.png" style="width:110px;height:110px">
+    </div> -->
+    <h4>JHONLIN GROUP</h4>
+    <h1>JG-SIGAP</h1>
+    <p>
+      Sistem Monitoring SLA, Lead Time, Overdue, Warning, dan Bottleneck
+      Pengadaan
+    </p>
+  </div>
 </div>
+<style>
+  .login-page {
+    min-height: 100vh;
+    display: grid;
+    grid-template-columns: 1.2fr 420px 0.9fr;
+    gap: 40px;
+    align-items: center;
+    padding: 60px;
+    background: linear-gradient(120deg, #eef6ff, #fff);
+  }
+  .login-left h1 {
+    font-size: 56px;
+    margin: 0;
+    color: #0f172a;
+  }
+  .login-left h4 {
+    margin: 0;
+    color: #475569;
+  }
+  .login-left p {
+    font-size: 18px;
+    max-width: 520px;
+  }
+  .login-logo {
+    width: 110px;
+    height: 110px;
+    border-radius: 50%;
+    background: #138a3d;
+    color: white;
+    display: grid;
+    place-items: center;
+    font-size: 42px;
+    font-weight: 900;
+    margin-bottom: 24px;
+  }
+  .login-card {
+    background: white;
+    border-radius: 22px;
+    box-shadow: 0 20px 60px rgba(15, 23, 42, 0.12);
+    padding: 34px;
+  }
+  .login-card h2 {
+    text-align: center;
+  }
+  .login-card p {
+    text-align: center;
+    color: #64748b;
+  }
+  .login-card label {
+    font-weight: 800;
+    font-size: 13px;
+    margin-top: 14px;
+    display: block;
+  }
+
+  .login-card input:not([type="checkbox"]) {
+    width: 100%;
+    height: 44px;
+    border: 1px solid #dbe3ef;
+    border-radius: 12px;
+    padding: 0 12px;
+    margin-top: 6px;
+  }
+
+  .login-card input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    margin: 0 8px 0 0;
+    padding: 0;
+    vertical-align: middle;
+    accent-color: #1167e8;
+  }
+
+  .login-card .remember-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin: 12px 0;
+    font-size: 13px;
+  }
+
+  .login-card .remember-row label {
+    display: flex;
+    align-items: center;
+    margin: 0;
+    font-weight: 500;
+  }
+  .login-features h3 {
+    font-size: 22px;
+  }
+  .feature {
+    background: white;
+    border-radius: 16px;
+    padding: 20px;
+    margin: 14px 0;
+    box-shadow: 0 10px 35px rgba(15, 23, 42, 0.08);
+    font-weight: 800;
+  }
+  @media (max-width: 1000px) {
+    .login-page {
+      grid-template-columns: 1fr;
+    }
+    .login-features {
+      display: none;
+    }
+  }
+  .login-logo-wrap {
+    width: 130px;
+    height: 130px;
+    margin: 0 auto 18px auto;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #ffffff;
+    border-radius: 24px;
+    border: 1px solid #e5edf7;
+    box-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+  }
+
+  .login-logo-img {
+    width: 110px;
+    max-width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+  }
+</style>

@@ -1,221 +1,88 @@
 class WorkflowService {
-
-  static createWorkflow(documentType, documentId){
-
-    const sheet =
-      Repository.getSheet(
-        CONFIG.SHEET.WORKFLOW_HISTORY
-      );
-
-    sheet.appendRow([
-      Utilities.getUuid(),
-      documentType,
-      documentId,
-      "CREATE",
-      new Date(),
-      "",
-      "",
-      SessionService.getSession().user_id,
-      "OPEN"
-    ]);
-
+  static getStep(stepCode) {
+    return Repository.safeGetAll(CONFIG.SHEET.WORKFLOW_STEP).find(s => same(s.step_code, stepCode) && isActiveValue(s.is_active));
   }
 
-  static moveNextStep(
-    documentType,
-    documentId,
-    nextStep
-  ){
+  static start(documentType, documentId, documentNo, stepCode, user, priorityCode) {
+    const step = this.getStep(stepCode) || {};
+    const sla = SlaService.resolve(documentType, stepCode, step.pic_role, priorityCode || "NORMAL");
+    const start = new Date();
+    const due = SlaService.addWorkingHours(start, Number(sla.sla_work_hour || 8), sla.calendar_id);
+    const warning = SlaService.subtractWorkingHours(due, Number(sla.warning_before_work_hour || 4), sla.calendar_id);
 
-    const sheet =
-      Repository.getSheet(
-        CONFIG.SHEET.WORKFLOW_HISTORY
-      );
+    const history = {
+      history_id: uid("WF-"),
+      document_type: documentType,
+      document_id: documentId,
+      step_code: stepCode,
+      step_name: step.step_name || stepCode,
+      module_name: step.module_name || "",
+      pic_role: step.pic_role || "",
+      pic_user_id: "",
+      start_time: start,
+      warning_time: warning,
+      due_time: due,
+      end_time: "",
+      duration_work_hour: "",
+      duration_calendar_hour: "",
+      overtime_hour: "",
+      sla_work_hour: sla.sla_work_hour || 8,
+      remaining_work_hour: "",
+      overdue_work_hour: "",
+      overdue_calendar_hour: "",
+      sla_status: "ON_TRACK",
+      action_status: "OPEN",
+      remarks: "",
+      created_at: start,
+      created_by: user ? user.user_id : ""
+    };
+    Repository.insert(CONFIG.SHEET.WORKFLOW_HISTORY, history);
 
-    sheet.appendRow([
-      Utilities.getUuid(),
-      documentType,
-      documentId,
-      nextStep,
-      new Date(),
-      "",
-      "",
-      SessionService.getSession().user_id,
-      "OPEN"
-    ]);
+    DocumentStatusService.upsert(documentType, documentId, documentNo, step, history, priorityCode || "NORMAL");
+    SlaService.upsertSnapshot(documentType, documentId, documentNo, step, history, priorityCode || "NORMAL");
+    TaskService.createTask(documentType, documentId, documentNo, step, history, user, priorityCode || "NORMAL");
+    NotificationService.createForStep(documentType, documentId, documentNo, step, history, "TASK_CREATED", "ALL", user);
 
+    return history;
   }
 
-  static completeStep(
-    documentType,
-    documentId,
-    stepName
-  ){
+  static action(payload, user) {
+    const documentType = payload.document_type;
+    const documentId = payload.document_id;
+    const action = payload.action_status || payload.action || "DONE";
+    const remarks = payload.remarks || "";
 
-    const data =
-      sheetData(CONFIG.SHEET.WORKFLOW_HISTORY);
+    const current = Repository.safeGetAll(CONFIG.SHEET.WORKFLOW_HISTORY)
+      .filter(w => same(w.document_type, documentType) && same(w.document_id, documentId) && same(w.action_status, "OPEN"))
+      .pop();
 
-    const rowIndex =
-      data.findIndex(r =>
-        r.document_type === documentType &&
-        r.document_id === documentId &&
-        r.step_name === stepName &&
-        r.status === "OPEN"
-      );
+    if (!current) return { success: false, message: "Workflow aktif tidak ditemukan" };
 
-    if(rowIndex === -1) return;
+    const end = new Date();
+    const duration = SlaService.workingHoursBetween(new Date(current.start_time), end, "");
+    const overdue = Math.max(0, SlaService.workingHoursBetween(new Date(current.due_time), end, ""));
 
-    const sheet =
-      Repository.getSheet(
-        CONFIG.SHEET.WORKFLOW_HISTORY
-      );
-
-    const row = rowIndex + 2;
-    const endTime = new Date();
-
-    sheet.getRange(row, 6).setValue(endTime);
-    sheet.getRange(row, 7).setValue(
-      (endTime - new Date(sheet.getRange(row, 5).getValue())) / 3600000
-    );
-    sheet.getRange(row, 9).setValue("DONE");
-
-  }
-
-}
-
-function getWorkflowConfig() {
-
-  const sh =
-    SpreadsheetApp.getActive()
-      .getSheetByName(CONFIG.SHEET.WORKFLOW_STEP);
-
-  const data = sh.getDataRange().getValues();
-
-  const result = [];
-
-  for(let i=1; i<data.length; i++){
-
-    result.push({
-
-      sequence_no : data[i][0],
-      step_code   : data[i][1],
-      step_name   : data[i][2],
-      module      : data[i][3],
-      next_step   : data[i][4],
-      is_active   : data[i][5]
-
+    Repository.update(CONFIG.SHEET.WORKFLOW_HISTORY, "history_id", current.history_id, {
+      end_time: end,
+      action_status: action,
+      sla_status: overdue > 0 ? "OVERDUE" : "DONE",
+      duration_work_hour: duration,
+      overdue_work_hour: overdue,
+      remarks
     });
 
+    TaskService.closeTask(documentType, documentId, current.step_code, user, action);
+
+    if (action === "REJECTED" || action === "CANCELLED") {
+      DocumentStatusService.setStatus(documentType, documentId, action);
+      return { success: true, message: "Workflow dihentikan: " + action };
+    }
+
+    const step = this.getStep(current.step_code);
+    if (step && step.next_step_code) {
+      this.start(documentType, documentId, payload.document_no || documentId, step.next_step_code, user, payload.priority_code || "NORMAL");
+    }
+
+    return { success: true, message: "Workflow berhasil diproses" };
   }
-
-  return result;
-
-}
-
-function getNextStep(stepCode){
-
-  const workflow = getWorkflowConfig();
-
-  const row =
-    workflow.find(x => x.step_code === stepCode);
-
-  if(!row) return null;
-
-  return row.next_step;
-
-}
-
-function getModuleByStep(stepCode){
-
-  const workflow = getWorkflowConfig();
-
-  const row =
-    workflow.find(x => x.step_code === stepCode);
-
-  return row
-    ? row.module
-    : null;
-
-}
-
-function getWorkflowProgress(stepCode){
-
-  const workflow = getWorkflowConfig();
-
-  const total =
-    workflow.filter(x => x.is_active == 1).length;
-
-  const current =
-    workflow.find(x => x.step_code === stepCode);
-
-  if(!current){
-
-    return {
-      percent:0
-    };
-
-  }
-
-  return {
-
-    currentStep : current.step_name,
-
-    percent :
-      Math.round(
-        (current.sequence_no / total) * 100
-      )
-
-  };
-
-}
-
-function getWorkflowDashboard(){
-
-  return {
-
-    workflow : getWorkflowConfig(),
-
-    sla : getSLADashboardData(),
-
-    heatmap : getSLAHeatmap(),
-
-    bottleneck : getBottleneckAnalysis()
-
-  };
-
-}
-
-function getModuleLoader(module){
-
-  const workflow =
-    getWorkflowConfig();
-
-  return workflow
-    .filter(x => x.module === module);
-
-}
-
-function createWorkflowHistory(
-  documentId,
-  stepCode,
-  user
-){
-
-  const sh =
-    getSheet(
-      CONFIG.SHEET.WORKFLOW_HISTORY
-    );
-
-  sh.appendRow([
-    Utilities.getUuid(),
-    "FPB",
-    documentId,
-    stepCode,
-    new Date(),
-    new Date(),
-    0,
-    user,
-    "DONE"
-  ]);
-
 }
